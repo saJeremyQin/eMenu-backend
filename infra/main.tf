@@ -20,8 +20,8 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
-resource "aws_lambda_function" "dishes" {
-  function_name = "emenu-dishes"
+resource "aws_lambda_function" "emenu-server" {
+  function_name = "emenu-server"
   s3_bucket     = aws_s3_bucket.lambda_bucket.id
   s3_key        = "lambda/lambda.zip"
   handler       = "index.handler"

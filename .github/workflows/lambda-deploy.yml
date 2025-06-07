@@ -36,13 +36,3 @@ jobs:
       - name: Upload to S3
         run: aws s3 cp lambda.zip s3://emenu-lambda-code-bucket/lambda/lambda.zip
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-
-      - name: Terraform Init
-        working-directory: infra
-        run: terraform init
-
-      - name: Terraform Apply
-        working-directory: infra
-        run: terraform apply -auto-approve
