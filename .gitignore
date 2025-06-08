@@ -1,5 +1,4 @@
-node_modules/
 lambda.zip
-infra/.terraform/
-infra/terraform.tfvars
-terraform.tfstate*
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
