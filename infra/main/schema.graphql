@@ -1,0 +1,44 @@
+type Dish {
+	id: ID!
+	name: String
+	description: String
+	price: Int
+	image: String
+	type: DishType
+}
+
+type DishType {
+	id: ID!
+	title: String!
+	alias: String
+}
+
+type Mutation {
+	newDish(
+		name: String!,
+		tyepId: ID!,
+		price: Int!,
+		description: String,
+		image: String
+	): Dish!
+	updateDish(
+		id: ID!,
+		name: String!,
+		type: String!,
+		price: Int!,
+		description: String,
+		image: String
+	): Dish!
+	deleteDish(id: ID!): Boolean!
+}
+
+type Query {
+	hello: String
+	dishes: [Dish]!
+	getDish(id: ID): Dish!
+}
+
+schema {
+	query: Query
+	mutation: Mutation
+}
