@@ -6,13 +6,19 @@ const DB_HOST = process.env.DB_HOST;
 
 export const handler = async (event, context) => {
   try {
+    console.log("🌐 Connecting to MongoDB...");
+
     // conncect database
     if(mongoose.connection.readyState === 0) {
-      await mongoose.connect(DB_HOST, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
+      await mongoose.connect(DB_HOST);
     }
+    console.log("DB_HOST:", DB_HOST);
+    console.log("Mongoose readyState:", mongoose.connection.readyState);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: 'Connected to MongoDB successfully' }),
+    };
 
     // look for all the dishes
     const dishes = await Dish.find();

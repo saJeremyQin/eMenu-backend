@@ -12,6 +12,7 @@ resource "aws_lambda_function" "emenu_server" {
   handler       = "index.handler"
   runtime       = "nodejs20.x"
   role          = aws_iam_role.lambda_exec.arn
+  timeout       = 10
 
   environment {
     variables = {
