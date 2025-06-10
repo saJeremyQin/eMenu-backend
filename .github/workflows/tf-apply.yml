@@ -24,6 +24,11 @@ jobs:
             name: tfplan
             path: infra/main
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.1
+          
       - name: Terraform Init
         working-directory: infra/main
         run: terraform init
