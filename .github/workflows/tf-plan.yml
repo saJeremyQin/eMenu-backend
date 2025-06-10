@@ -1,4 +1,4 @@
-name: Deploy Lambda via Terraform
+name: Terraform plan
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - dev
 
 jobs:
-  deploy:
+  terraform-plan:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,4 +35,22 @@ jobs:
 
       - name: Upload to S3
         run: aws s3 cp lambda.zip s3://emenu-lambda-code-bucket/lambda/lambda.zip
+
+      - name: Terraform Init
+        working-directory: infra/main
+        run: terraform init
+      
+      - name: Terraform Plan
+        working-directory: infra/main
+        run: terraform plan -out=tfplan.out
+      
+      - name: Upload tfplan.out
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan
+          path: infra/main/tfplan.out
+        
+      - name: Show Terraform Plan
+        working-directory: infra/main
+        run: terraform show tfplan.out
 
