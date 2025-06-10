@@ -19,7 +19,7 @@ jobs:
           aws-region: ap-southeast-2
 
       - name: Download tfplan artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
             name: tfplan
             path: infra/main
