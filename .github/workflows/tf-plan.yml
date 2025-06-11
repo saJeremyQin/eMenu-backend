@@ -54,8 +54,3 @@ jobs:
         with:
           name: tfplan
           path: infra/main/tfplan.out
-        
-      - name: Show Terraform Plan
-        working-directory: infra/main
-        run: terraform show tfplan.out
-
