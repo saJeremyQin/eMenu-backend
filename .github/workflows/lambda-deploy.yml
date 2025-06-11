@@ -1,12 +1,14 @@
-name: Terraform plan
+name: Lambda Deploy
 
 on:
   push:
     branches:
       - dev
+    paths:
+      - 'lambda/**'
 
 jobs:
-  terraform-plan:
+  deploy-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,27 +37,13 @@ jobs:
 
       - name: Upload to S3
         run: aws s3 cp lambda.zip s3://emenu-lambda-code-bucket/lambda/lambda.zip
-              
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.12.1
 
-      - name: Terraform Init
-        working-directory: infra/main
-        run: terraform init
-      
-      - name: Terraform Plan
-        working-directory: infra/main
-        run: terraform plan -out=tfplan.out
-      
-      - name: Upload tfplan.out
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: infra/main/tfplan.out
-        
-      - name: Show Terraform Plan
-        working-directory: infra/main
-        run: terraform show tfplan.out
+      - name: Update Lambda function code
+        run: |
+          aws lambda update-function-code \
+            --function-name emenu-server \
+            --s3-bucket emenu-lambda-code-bucket \
+            --s3-key lambda/lambda.zip
+      - name: Verify Lambda update
+        run: aws lambda get-function --function-name emenu-server
 
