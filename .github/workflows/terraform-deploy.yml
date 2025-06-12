@@ -7,6 +7,11 @@ on:
     paths: 
       - "infra/main/**"
 
+permissions:
+  issues: write  # For manual-approval Action
+  contents: read  # For checkout and other steps
+  actions: read  # For workflow execution
+
 jobs:
   terraform-apply:
     runs-on: ubuntu-latest
