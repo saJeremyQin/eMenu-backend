@@ -1,11 +1,16 @@
-name: Terraform Apply (Manual)
+name: Terraform Deploy
 
 on:
-  workflow_dispatch:  # trigger manually
+  push:
+    branches:
+      - dev
+    paths: 
+      - "infra/main/**"
 
 jobs:
-  apply:
+  terraform-apply:
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - name: Checkout repo
@@ -18,12 +23,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-2
 
-      - name: Download tfplan artifacts
-        uses: actions/download-artifact@v4
-        with:
-            name: tfplan
-            path: infra/main
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -33,6 +32,33 @@ jobs:
         working-directory: infra/main
         run: terraform init
 
-      - name: Terraform Apply
+      - name: Terraform Plan
         working-directory: infra/main
-        run: terraform apply tfplan.out
+        id: plan
+        run: terraform plan -out=tfplan
+        continue-on-error: true
+
+      - name: Upload tfplan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/main/tfplan
+
+      - name: Display Terraform Plan Output
+        run: cat infra/main/tfplan
+
+      - name: Request Manual Approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: saJeremyQin
+          minimum-approvals: 1
+          issue-title: "Manual approval required for Terraform Apply"
+          issue-body: |
+            Please review the Terraform plan output uploaded as an artifact.
+            Approve to proceed with `terraform apply`.
+
+      - name: Terraform Apply
+        if: success()
+        working-directory: infra/main
+        run: terraform apply -auto-approve tfplan
