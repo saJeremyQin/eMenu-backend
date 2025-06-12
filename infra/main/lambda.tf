@@ -7,7 +7,7 @@ data "aws_s3_bucket" "lambda_code" {
 // Create a lambda function
 resource "aws_lambda_function" "emenu_server" {
   function_name = "emenu-server"
-  s3_bucket     =data.aws_s3_bucket.lambda_code.id
+  s3_bucket     = data.aws_s3_bucket.lambda_code.id
   s3_key        = "lambda/lambda.zip"
   handler       = "index.handler"
   runtime       = "nodejs20.x"
@@ -20,7 +20,7 @@ resource "aws_lambda_function" "emenu_server" {
     }
   }
 
-  source_code_hash = filebase64sha256("../../lambda.zip")
+  # source_code_hash = filebase64sha256("../../lambda.zip")
 }
 
 // Create the execution role
