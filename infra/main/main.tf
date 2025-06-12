@@ -10,6 +10,7 @@ terraform {
   }
 }
 
+
 // set region
 provider "aws" {
   region = "ap-southeast-2"
