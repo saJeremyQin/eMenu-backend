@@ -39,6 +39,25 @@ resource "aws_s3_bucket_versioning" "versioning_lambda_code" {
   }
 }
 
+// Add lifecyle rules to lambda_code_bucket
+resource "aws_s3_bucket_lifecycle_configuration" "lambda_code_bucket_lifecycle" {
+  bucket = aws_s3_bucket.lambda_code.id
+
+  rule {
+     id     = "expire-old-lambda-versions"
+     status = "Enabled"
+
+     filter {
+       prefix = "lambda/lambda.zip"
+     }
+
+     noncurrent_version_expiration {
+       noncurrent_days = 14
+     }
+  }
+  
+}
+
 // Enable SSE-S3 encryption for Lambda code bucket
 resource "aws_s3_bucket_server_side_encryption_configuration" "secure_lambda_code" {
   bucket = aws_s3_bucket.lambda_code.id
