@@ -12,7 +12,6 @@ export const handler = async (event, context) => {
     if(mongoose.connection.readyState === 0) {
       await mongoose.connect(DB_HOST);
     }
-    // console.log("Mongoose readyState:", mongoose.connection.readyState);
 
     // look for all the dishes
     const dishes = await Dish.find();
