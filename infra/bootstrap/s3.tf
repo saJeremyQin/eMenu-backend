@@ -55,7 +55,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_code_bucket_lifecycle" 
        noncurrent_days = 14
      }
   }
-  
 }
 
 // Enable SSE-S3 encryption for Lambda code bucket

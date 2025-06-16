@@ -6,10 +6,9 @@ terraform {
     key          = "env/dev/terraform.tfstate"
     region       = "ap-southeast-2"
     encrypt      = true
-    use_lockfile = true  
+    use_lockfile = true
   }
 }
-
 
 // set region
 provider "aws" {
