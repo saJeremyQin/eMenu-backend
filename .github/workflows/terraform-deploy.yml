@@ -88,6 +88,10 @@ jobs:
         with:
           terraform_version: 1.12.1
 
+      - name: Terraform Init
+        working-directory: infra/main
+        run: terraform init
+
       - name: Terraform Apply
         if: success()
         working-directory: infra/main
