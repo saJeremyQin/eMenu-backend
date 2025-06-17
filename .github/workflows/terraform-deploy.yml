@@ -41,9 +41,9 @@ jobs:
         working-directory: infra/main
         run: terraform plan -out=tfplan
 
-      - name: Terraform Plan (text output)
+      - name: Terraform Plan (Text Output)
         working-directory: infra/main
-        run: terraform plan
+        run: terraform plan -no-color > plan.txt
 
       - name: Upload tfplan
         uses: actions/upload-artifact@v4
@@ -65,16 +65,28 @@ jobs:
           name: tfplan
           path: infra/main
 
+      - name: Read Plan into Output
+        id: read-plan
+        run: |
+          echo "plan<<EOF" >> $GITHUB_OUTPUT
+          cat infra/main/plan.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Request Manual Approval
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ secrets.APPROVAL_TOKEN }}
           approvers: saJeremyQin
           minimum-approvals: 1
-          issue-title: "Terraform Apply Approval Needed"
+          issue-title: "Manual approval required for Terraform Apply"
           issue-body: |
-            Terraform Plan has been completed and uploaded.
-            Review the plan log and approve to apply changes.
+            Terraform plan result:
+
+            ```
+            ${{ steps.read-plan.outputs.plan }}
+            ```
+
+            Please approve to proceed.
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
