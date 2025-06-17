@@ -67,10 +67,13 @@ jobs:
 
       - name: Read Plan into Output
         id: read-plan
+        working-directory: infra/main
         run: |
-          echo "plan<<EOF" >> $GITHUB_OUTPUT
-          cat infra/main/plan.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "plan<<EOF"
+            cat plan.txt
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Request Manual Approval
         uses: trstringer/manual-approval@v1
