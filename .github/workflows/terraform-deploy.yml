@@ -51,6 +51,12 @@ jobs:
           name: tfplan
           path: infra/main/tfplan
 
+      - name: Upload plan.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan-text
+          path: infra/main/plan.txt
+
   apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
@@ -63,6 +69,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tfplan
+          path: infra/main
+        
+      - name: Download plan.txt
+        uses: actions/download-artifact@v4
+        with:
+          name: plan-text
           path: infra/main
 
       - name: Read Plan into Output
