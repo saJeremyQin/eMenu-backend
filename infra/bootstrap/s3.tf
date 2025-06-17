@@ -52,7 +52,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "lambda_code_bucket_lifecycle" 
      }
 
      noncurrent_version_expiration {
-       noncurrent_days = 14
+       noncurrent_days = 7
      }
   }
 }
