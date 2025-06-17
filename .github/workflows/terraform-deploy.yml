@@ -43,6 +43,7 @@ jobs:
         run: terraform plan -out=tfplan
         continue-on-error: true
 
+
       - name: Upload tfplan
         uses: actions/upload-artifact@v4
         with:
@@ -50,7 +51,8 @@ jobs:
           path: infra/main/tfplan
 
       - name: Display Terraform Plan Output
-        run: cat infra/main/tfplan
+        working-directory: infra/main
+        run: terraform show tfplan
 
       - name: Request Manual Approval
         uses: trstringer/manual-approval@v1
