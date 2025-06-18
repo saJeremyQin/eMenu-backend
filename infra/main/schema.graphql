@@ -1,44 +1,208 @@
-type Dish {
-	id: ID!
-	name: String
-	description: String
-	price: Int
-	image: String
-	type: DishType
+# GraphQL Schema for eMenu with App and Owner Portal Support
+
+directive @aws_cognito_user_pools on OBJECT | FIELD_DEFINITION
+directive @auth(rules: [AuthRule]) on OBJECT | FIELD_DEFINITION
+
+input AuthRule {
+  allow: AuthStrategy!
+  ownerField: String
+  identityClaim: String
+  groupClaim: String
+  groups: [String]
+  operations: [ModelOperation]
 }
 
-type DishType {
-	id: ID!
-	title: String!
-	alias: String
+# ==========================
+# ENUMS
+# ==========================
+enum AuthStrategy {
+  owner
+  groups
+  private
+  public
 }
 
-type Mutation {
-	newDish(
-		name: String!,
-		tyepId: ID!,
-		price: Int!,
-		description: String,
-		image: String
-	): Dish!
-	updateDish(
-		id: ID!,
-		name: String!,
-		type: String!,
-		price: Int!,
-		description: String,
-		image: String
-	): Dish!
-	deleteDish(id: ID!): Boolean!
+enum ModelOperation {
+  create
+  update
+  delete
+  read
 }
 
+enum Role {
+  boss
+  waiter
+  demo
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+}
+
+enum OrderStatus {
+  ONGOING
+  CHECKOUT
+}
+
+# ==========================
+# TYPES
+# ==========================
+# Optional: Keep User type for compatibility or removal later
+# This can be removed if user info is managed only via Cognito attributes
+
+type Restaurant
+  @aws_cognito_user_pools
+  @auth(rules: [
+    { allow: owner, ownerField:"bossId", operations: [create, read, update] },
+    { allow: groups, groups: ["admin"], : [read, update, create] },
+    { allow: groups, groups: ["waiter"], operations: [read] }
+  ])
+{
+  id: ID!
+  name: String!
+  image: String
+  address: String
+  bossId: ID!
+  subscriptionPlan: SubscriptionPlan
+  subscriptionExpiry: AWSDateTime
+}
+
+type DishType
+  @aws_cognito_user_pools
+  @auth(rules: [
+    { allow: groups, groups: ["admin", "boss"] },
+    { allow: groups, groups: ["waiter"], operations: [read] }
+  ])
+{
+  id: ID!
+  name: String!
+  restaurantId: ID!
+}
+
+type Dish
+  @aws_cognito_user_pools
+  @auth(rules: [
+    { allow: groups, groups: ["admin", "boss"], operations: [create, update, delete, read]},
+    { allow: groups, groups: ["waiter"], operations: [read] }
+  ])
+{
+  id: ID!
+  name: String!
+  description: String
+  price: Number!
+  image: String!
+  dishTypeId: ID!
+  restaurantId: ID!
+}
+
+type Order
+  @aws_cognito_user_pools
+  @auth(rules: [
+    { allow: groups, groups: ["admin"] },
+    { allow: groups, groups: ["boss"], operations: [read, update] },
+    { allow: groups, groups: ["waiter"], operations: [read, create] }
+  ])
+{
+  id: ID!
+  tableNumber: String!
+  waiterId: ID!
+  restaurantId: ID!
+  details: AWSJSON
+  status: OrderStatus!
+  createdAt: AWSDateTime!
+}
+
+type DailyStats {
+  date: AWSDate
+  totalOrders: Int
+  totalAmount: Float
+}
+
+# ==========================
+# QUERIES
+# ==========================
 type Query {
-	hello: String
-	dishes: [Dish]!
-	getDish(id: ID): Dish!
+  getRestaurant(id: ID!): Restaurant
+  listDishTypes(restaurantId: ID!): [DishType]
+  listDishes(restaurantId: ID!): [Dish]
+  listOrders(restaurantId: ID!, startDate: AWSDate, endDate: AWSDate): [Order]
+  getOrder(id: ID!): Order
+  getDailyStats(restaurantId: ID!, date: AWSDate!): DailyStats
+  listDemoDishTypes: [DishType]
+  listDemoDishes: [Dish]
 }
 
+# ==========================
+# Mutations
+# ==========================
+type Mutation {
+  inviteWaiter(email: String!, restaurantId: ID!): Boolean
+  deleteWaiter(sub: String!): Boolean
+  createDishType(input: CreateDishTypeInput!): DishType
+  updateDishType(id: ID!, input: UpdateDishTypeInput!): DishType
+  deleteDishType(id: ID!): DishType
+  createDish(input: CreateDishInput!): Dish
+  updateDish(id: ID!, input: UpdateDishInput!): Dish
+  deleteDish(id: ID!): Dish
+  createOrder(input: CreateOrderInput!): Order
+  updateOrderStatus(id: ID!, status: OrderStatus!): Order
+  createRestaurant(input: CreateRestaurantInput): Restaurant
+  updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant
+  updateSubscription(input: UpdateSubscriptionInput!): Restaurant
+}
+
+# ==========================
+# INPUT TYPES
+# ==========================
+input CreateDishTypeInput {
+  name: String!
+  restaurantId: ID!
+}
+
+input UpdateDishTypeInput {
+  name: String
+}
+
+input CreateDishInput {
+  name: String!
+  dishTypeId: ID!
+  restaurantId: ID!
+}
+
+input UpdateDishInput {
+  name: String
+  dishTypeId: ID
+}
+
+input CreateOrderInput {
+  tableNumber: String!
+  waiterId: ID!
+  restaurantId: ID!
+  details: AWSJSON!
+}
+
+input CreateRestaurantInput {
+  name: String!
+  image: String
+  address: String
+}
+
+input UpdateRestaurantInput {
+  name: String
+  image: String
+  address: String
+}
+
+input UpdateSubscriptionInput {
+  plan: SubscriptionPlan!
+  paymentMethod: String!
+}
+
+# ==========================
+# SCHEMA
+# ==========================
 schema {
-	query: Query
-	mutation: Mutation
+  query: Query
+  mutation: Mutation
 }
