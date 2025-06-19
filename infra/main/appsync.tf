@@ -26,14 +26,24 @@ resource "aws_appsync_datasource" "emenu_datasource" {
 }
 
 // Add resolver, mount query to dishes
-resource "aws_appsync_resolver" "dishes_query" {
-    api_id      = aws_appsync_graphql_api.emenu_apis.id
-    field       = "dishes"
-    type        = "Query"
-    data_source = aws_appsync_datasource.emenu_datasource.name
+resource "aws_appsync_resolver" "list_dishes_query" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "listDishes"
+  type        = "Query"
+  data_source = aws_appsync_datasource.emenu_datasource.name
 
-    request_template  = file("${path.module}/mapping-templates/dishes-request.vtl")
-    response_template = file("${path.module}/mapping-templates/dishes-response.vtl")
+  request_template  = file("${path.module}/mapping-templates/listDishes-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+}
+
+resource "aws_appsync_resolver" "create_restaurant_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "createRestaurant"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/createRestaurant-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
 }
 
 // Create a role for AppSync to invoke lambda

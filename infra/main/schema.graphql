@@ -51,6 +51,23 @@ enum OrderStatus {
 # Optional: Keep User type for compatibility or removal later
 # This can be removed if user info is managed only via Cognito attributes
 
+type User
+  @aws_cognito_user_pools
+  @auth(rules: [
+    { allow: groups, groups: ["admin"], operations: [create, read, update, delete] },
+    { allow: owner, ownerField: "sub", operations: [read] }
+  ])
+{
+  id: ID!                 # MongoDB _id
+  sub: String!            # Cognito User sub
+  email: String
+  role: Role!
+  restaurantId: ID
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+
 type Restaurant
   @aws_cognito_user_pools
   @auth(rules: [

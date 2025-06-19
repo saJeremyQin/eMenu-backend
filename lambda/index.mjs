@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import DishType from './models/dishType.js';
 import Dish from './models/dish.js';
 import Restaurant from './models/restaurant.js';
+import User from './models/user.js';
 
 const DB_HOST = process.env.DB_HOST;
 
@@ -17,8 +18,8 @@ export const handler = async (event, context) => {
     const field = event.field;
 
     switch (field) {
-      case "dishes":
-        return await getDishes();
+      case "listDishes":
+        return await listDishes(event);
       case "createRestaurant":
         return await createRestaurant(event);
       default:
@@ -37,27 +38,34 @@ export const handler = async (event, context) => {
   }
 };
 
-const getDishes = async () => {
-  return await Promise.all(dishes.map(async (dish) => {
-    const type = await DishType.findById(dish.type);
-    return {
-      id: dish._id.toString(),
-      name: dish.name,
-      description: dish.description,
-      price: dish.price,
-      image: dish.image,
-      type: type ? {
-        id: type._id.toString(),
-        title: type.title,
-        alias: type.alias,
-      } : null,
-    };
+const listDishes = async (event) => {
+  const userSub = event.identity?.sub;
+  if (!userSub) {
+    throw new Error("Unauthorized: missing user sub");
+  }
+
+  const user = await User.findOne({ sub: userSub });
+  if (!user || !user.restaurantId) {
+    throw new Error("User not linked to a restaurant");
+  }
+
+  const dishes = await Dish.find({ restaurantId: user.restaurantId });
+
+  return dishes.map(dish => ({
+    id: dish._id.toString(),
+    name: dish.name,
+    description: dish.description,
+    price: dish.price,
+    image: dish.image,
+    dishTypeId: dish.dishTypeId?.toString(),
+    restaurantId: dish.restaurantId?.toString(),
   }));
 };
 
 const createRestaurant = async (event) => {
   const input = event.arguments.input;
   const userId = event.identity.sub       // Get Cognito ID of curent user
+
   if (!userId) {
     throw new Error("Missing Cognito user identity (sub).");
   }
@@ -71,6 +79,8 @@ const createRestaurant = async (event) => {
   });
 
   const saved = await newRestaurant.save();
+
+  await User.updateOne({ sub: userId }, { $set: { restaurantId: saved._id } });
 
   return {
     id: saved._id.toString(),
