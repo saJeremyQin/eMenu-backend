@@ -72,7 +72,7 @@ type Restaurant
   @aws_cognito_user_pools
   @auth(rules: [
     { allow: owner, ownerField:"bossId", operations: [create, read, update] },
-    { allow: groups, groups: ["admin"], : [read, update, create] },
+    { allow: groups, groups: ["admin"], : operations: [read, update, create] },
     { allow: groups, groups: ["waiter"], operations: [read] }
   ])
 {
