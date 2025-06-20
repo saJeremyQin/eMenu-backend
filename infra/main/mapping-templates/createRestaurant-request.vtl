@@ -2,6 +2,10 @@
   "version": "2018-05-29",
   "operation": "Invoke",
   "payload": {
-    "field": "createRestaurant"
+    "field": "createRestaurant",
+    "arguments": {
+      "input": $util.toJson($context.arguments.input)
+    },
+    "identity": $util.toJson($context.identity)
   }
 }

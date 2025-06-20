@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import DishType from './models/dishType.js';
-import Dish from './models/dish.js';
 import Restaurant from './models/restaurant.js';
+import Dish from './models/dish.js';
+import DishType from './models/dishType.js';
 import User from './models/user.js';
 
 const DB_HOST = process.env.DB_HOST;
@@ -39,56 +39,46 @@ export const handler = async (event, context) => {
 };
 
 const listDishes = async (event) => {
-  const userSub = event.identity?.sub;
-  if (!userSub) {
-    throw new Error("Unauthorized: missing user sub");
-  }
-
-  const user = await User.findOne({ sub: userSub });
-  if (!user || !user.restaurantId) {
-    throw new Error("User not linked to a restaurant");
-  }
-
-  const dishes = await Dish.find({ restaurantId: user.restaurantId });
-
-  return dishes.map(dish => ({
-    id: dish._id.toString(),
-    name: dish.name,
-    description: dish.description,
-    price: dish.price,
-    image: dish.image,
-    dishTypeId: dish.dishTypeId?.toString(),
-    restaurantId: dish.restaurantId?.toString(),
-  }));
+  // to be done
 };
 
 const createRestaurant = async (event) => {
-  const input = event.arguments.input;
-  const userId = event.identity.sub       // Get Cognito ID of curent user
+  const identity = event.identity; // 这是从 AppSync 传递过来的身份对象
 
-  if (!userId) {
-    throw new Error("Missing Cognito user identity (sub).");
+  if (!identity) {
+      console.error('No identity found in AppSync event context.');
+      throw new Error('Authentication required.');
+  }
+  const sub = identity.sub;
+  
+  const groups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
+  console.log('user group is', groups);
+  
+
+  if (!sub) {
+    throw new Error("Unauthorized: Missing user identity");
   }
 
-  // create restaurant data
-  const newRestaurant = new Restaurant({
-    ...input,
-    bossId: userId, // 设置餐馆拥有者
-    subscriptionPlan: 'BASIC', // 初始套餐
-    subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 默认一个月
+  if (!groups || !groups.includes("boss")) {
+    throw new Error("Only boss users can create restaurants");
+  }
+
+  const input = event.arguments.input;
+
+  // Check if this boss already has a restaurant
+  const existing = await Restaurant.findOne({ bossId: sub });
+  if (existing) {
+    throw new Error("You have already created a restaurant.");
+  }
+  const restaurant = new Restaurant({
+    name: input.name,
+    image: input.image || null,
+    address: input.address || null,
+    bossId: sub,
+    subscriptionPlan: "BASIC",
+    subscriptionExpiry: null,
   });
 
-  const saved = await newRestaurant.save();
-
-  await User.updateOne({ sub: userId }, { $set: { restaurantId: saved._id } });
-
-  return {
-    id: saved._id.toString(),
-    name: saved.name,
-    image: saved.image,
-    address: saved.address,
-    bossId: saved.bossId,
-    subscriptionPlan: saved.subscriptionPlan,
-    subscriptionExpiry: saved.subscriptionExpiry.toISOString(),
-  };
+  await restaurant.save();
+  return restaurant.toObject();
 };

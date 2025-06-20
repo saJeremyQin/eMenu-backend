@@ -36,17 +36,17 @@ resource "aws_appsync_datasource" "emenu_datasource" {
 }
 
 // Add resolver, mount query to dishes
-# resource "aws_appsync_resolver" "list_dishes_query" {
-#   api_id      = aws_appsync_graphql_api.emenu_apis.id
-#   field       = "listDishes"
-#   type        = "Query"
-#   data_source = aws_appsync_datasource.emenu_datasource.name
+resource "aws_appsync_resolver" "list_dishes_query" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "listDishes"
+  type        = "Query"
+  data_source = aws_appsync_datasource.emenu_datasource.name
 
-#   request_template  = file("${path.module}/mapping-templates/listDishes-request.vtl")
-#   response_template = file("${path.module}/mapping-templates/common-response.vtl")
+  request_template  = file("${path.module}/mapping-templates/listDishes-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
-#   depends_on = [aws_appsync_graphql_api.emenu_apis]
-# }
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
 
 resource "aws_appsync_resolver" "create_restaurant_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id

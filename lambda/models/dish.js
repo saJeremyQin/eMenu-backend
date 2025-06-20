@@ -1,5 +1,5 @@
 // Require the mongoose library
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const dishSchema = new mongoose.Schema(
     {
@@ -29,4 +29,4 @@ const dishSchema = new mongoose.Schema(
 
 const Dish = mongoose.models.Dish || mongoose.model('Dish',dishSchema);
 
-module.exports = Dish;
+export default Dish;

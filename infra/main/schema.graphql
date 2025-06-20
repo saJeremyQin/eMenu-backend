@@ -1,44 +1,5 @@
 # GraphQL Schema for eMenu
-# 最简版，移除所有认证相关的指令和枚举，用于隔离 Internal Failure 问题
-
-# scalar AWSDate
-# scalar AWSDateTime
-# scalar AWSJSON
-
-# 暂时注释掉 AuthRule 和相关的枚举定义
-# input AuthRule {
-#   allow: AuthStrategy!
-#   ownerField: String
-#   identityClaim: String
-#   groupClaim: String
-#   groups: [String]
-#   operations: [ModelOperation]
-# }
-
-# ==========================
-# ENUMS (仅保留与业务相关的枚举，移除认证相关的)
-# ==========================
-
-# enum ModelOperation { # 属于 AuthRule，移除
-#   create
-#   update
-#   delete
-#   read
-# }
-
-# enum AuthStrategy { # 属于 AuthRule，移除
-#   owner
-#   groups
-#   private
-#   public
-# }
-
-# 暂时注释掉 Role，因为 User 类型已注释
-# enum Role {
-#   boss
-#   waiter
-#   demo
-# }
+scalar AWSDateTime
 
 enum SubscriptionPlan {
   BASIC
@@ -50,89 +11,42 @@ enum OrderStatus {
   CHECKOUT
 }
 
-# ==========================
-# TYPES (仅保留 Restaurant 类型，移除认证指令)
-# ==========================
+type User {
+  id: ID!
+  email: String!
+  role: String!
+  restaurantId: ID!
+}
 
-# 暂时注释掉 User Type
-# type User
-# {
-#   id: ID!
-#   sub: String!
-#   email: String
-#   role: Role!
-#   restaurantId: ID
-#   createdAt: AWSDateTime
-#   updatedAt: AWSDateTime
-# }
-
-
-type Restaurant # 移除 @aws_cognito_user_pools 和 @auth
-{
+type Restaurant {
   id: ID!
   name: String!
   image: String
   address: String
-  bossId: ID! # 暂时保留，虽然现在没有认证信息来关联
+  bossId: ID!
   subscriptionPlan: SubscriptionPlan
   subscriptionExpiry: AWSDateTime
 }
 
-# 暂时注释掉 DishType 和 Dish 类型
-# type DishType
-# {
-#   id: ID!
-#   name: String!
-#   restaurantId: ID!
-# }
-
-# type Dish
-# {
-#   id: ID!
-#   name: String!
-#   description: String
-#   price: Int!
-#   image: String!
-#   dishTypeId: ID!
-#   restaurantId: ID!
-# }
-
-# 暂时注释掉 Order 和 DailyStats 类型
-# type Order
-# {
-#   id: ID!
-#   tableNumber: String!
-#   waiterId: ID!
-#   restaurantId: ID!
-#   details: AWSJSON
-#   status: OrderStatus!
-#   createdAt: AWSDateTime!
-# }
-
-# type DailyStats {
-#   date: AWSDate
-#   totalOrders: Int
-#   totalAmount: Float
-# }
-
-# ==========================
-# QUERIES (仅保留 getRestaurant)
-# ==========================
-type Query {
-  getRestaurant(id: ID!): Restaurant
+type Dish {
+  id: ID!
+  name: String!
+  description: String
+  price: Int!
+  image: String!
+  dishTypeId: ID!
+  restaurantId: ID!
 }
 
-# ==========================
-# Mutations (仅保留 createRestaurant 和 updateRestaurant)
-# ==========================
+type Query {
+  getRestaurant(id: ID!): Restaurant
+  listDishes(restaurantId: ID!): [Dish]
+}
+
 type Mutation {
   createRestaurant(input: CreateRestaurantInput!): Restaurant
   updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant
 }
-
-# ==========================
-# INPUT TYPES (仅保留 Restaurant 相关的 Input Type)
-# ==========================
 
 input CreateRestaurantInput {
   name: String!
@@ -146,9 +60,6 @@ input UpdateRestaurantInput {
   address: String
 }
 
-# ==========================
-# SCHEMA
-# ==========================
 schema {
   query: Query
   mutation: Mutation
