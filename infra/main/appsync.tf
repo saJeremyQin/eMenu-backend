@@ -1,9 +1,16 @@
 
 // Create AppSync graphql apis
 resource "aws_appsync_graphql_api" "emenu_apis" {
-  authentication_type = "API_KEY"
+  # authentication_type = "API_KEY"
+  authentication_type = "AMAZON_COGNITO_USER_POOLS"
   name                = "emenu-apis"
   schema              = file("${path.module}/schema.graphql")
+
+  user_pool_config {
+    user_pool_id   = "ap-southeast-2_0a2hzDvRi"
+    aws_region     = var.aws_region
+    default_action = "ALLOW"
+  }
 }
 
 // Create API_KEY resoure
@@ -23,18 +30,23 @@ resource "aws_appsync_datasource" "emenu_datasource" {
   lambda_config {
     function_arn = aws_lambda_function.emenu_server.arn
   }
+    
+  // depends on the update of schema
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
 // Add resolver, mount query to dishes
-resource "aws_appsync_resolver" "list_dishes_query" {
-  api_id      = aws_appsync_graphql_api.emenu_apis.id
-  field       = "listDishes"
-  type        = "Query"
-  data_source = aws_appsync_datasource.emenu_datasource.name
+# resource "aws_appsync_resolver" "list_dishes_query" {
+#   api_id      = aws_appsync_graphql_api.emenu_apis.id
+#   field       = "listDishes"
+#   type        = "Query"
+#   data_source = aws_appsync_datasource.emenu_datasource.name
 
-  request_template  = file("${path.module}/mapping-templates/listDishes-request.vtl")
-  response_template = file("${path.module}/mapping-templates/common-response.vtl")
-}
+#   request_template  = file("${path.module}/mapping-templates/listDishes-request.vtl")
+#   response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+#   depends_on = [aws_appsync_graphql_api.emenu_apis]
+# }
 
 resource "aws_appsync_resolver" "create_restaurant_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id
@@ -44,6 +56,8 @@ resource "aws_appsync_resolver" "create_restaurant_mutation" {
 
   request_template  = file("${path.module}/mapping-templates/createRestaurant-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
+  
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
 // Create a role for AppSync to invoke lambda

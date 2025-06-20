@@ -1,39 +1,44 @@
-# GraphQL Schema for eMenu with App and Owner Portal Support
+# GraphQL Schema for eMenu
+# 最简版，移除所有认证相关的指令和枚举，用于隔离 Internal Failure 问题
 
-directive @aws_cognito_user_pools on OBJECT | FIELD_DEFINITION
-directive @auth(rules: [AuthRule]) on OBJECT | FIELD_DEFINITION
+# scalar AWSDate
+# scalar AWSDateTime
+# scalar AWSJSON
 
-input AuthRule {
-  allow: AuthStrategy!
-  ownerField: String
-  identityClaim: String
-  groupClaim: String
-  groups: [String]
-  operations: [ModelOperation]
-}
+# 暂时注释掉 AuthRule 和相关的枚举定义
+# input AuthRule {
+#   allow: AuthStrategy!
+#   ownerField: String
+#   identityClaim: String
+#   groupClaim: String
+#   groups: [String]
+#   operations: [ModelOperation]
+# }
 
 # ==========================
-# ENUMS
+# ENUMS (仅保留与业务相关的枚举，移除认证相关的)
 # ==========================
-enum AuthStrategy {
-  owner
-  groups
-  private
-  public
-}
 
-enum ModelOperation {
-  create
-  update
-  delete
-  read
-}
+# enum ModelOperation { # 属于 AuthRule，移除
+#   create
+#   update
+#   delete
+#   read
+# }
 
-enum Role {
-  boss
-  waiter
-  demo
-}
+# enum AuthStrategy { # 属于 AuthRule，移除
+#   owner
+#   groups
+#   private
+#   public
+# }
+
+# 暂时注释掉 Role，因为 User 类型已注释
+# enum Role {
+#   boss
+#   waiter
+#   demo
+# }
 
 enum SubscriptionPlan {
   BASIC
@@ -46,158 +51,88 @@ enum OrderStatus {
 }
 
 # ==========================
-# TYPES
+# TYPES (仅保留 Restaurant 类型，移除认证指令)
 # ==========================
-# Optional: Keep User type for compatibility or removal later
-# This can be removed if user info is managed only via Cognito attributes
 
-type User
-  @aws_cognito_user_pools
-  @auth(rules: [
-    { allow: groups, groups: ["admin"], operations: [create, read, update, delete] },
-    { allow: owner, ownerField: "sub", operations: [read] }
-  ])
-{
-  id: ID!                 # MongoDB _id
-  sub: String!            # Cognito User sub
-  email: String
-  role: Role!
-  restaurantId: ID
-  createdAt: AWSDateTime
-  updatedAt: AWSDateTime
-}
+# 暂时注释掉 User Type
+# type User
+# {
+#   id: ID!
+#   sub: String!
+#   email: String
+#   role: Role!
+#   restaurantId: ID
+#   createdAt: AWSDateTime
+#   updatedAt: AWSDateTime
+# }
 
 
-type Restaurant
-  @aws_cognito_user_pools
-  @auth(rules: [
-    { allow: owner, ownerField:"bossId", operations: [create, read, update] },
-    { allow: groups, groups: ["admin"], : operations: [read, update, create] },
-    { allow: groups, groups: ["waiter"], operations: [read] }
-  ])
+type Restaurant # 移除 @aws_cognito_user_pools 和 @auth
 {
   id: ID!
   name: String!
   image: String
   address: String
-  bossId: ID!
+  bossId: ID! # 暂时保留，虽然现在没有认证信息来关联
   subscriptionPlan: SubscriptionPlan
   subscriptionExpiry: AWSDateTime
 }
 
-type DishType
-  @aws_cognito_user_pools
-  @auth(rules: [
-    { allow: groups, groups: ["admin", "boss"] },
-    { allow: groups, groups: ["waiter"], operations: [read] }
-  ])
-{
-  id: ID!
-  name: String!
-  restaurantId: ID!
-}
+# 暂时注释掉 DishType 和 Dish 类型
+# type DishType
+# {
+#   id: ID!
+#   name: String!
+#   restaurantId: ID!
+# }
 
-type Dish
-  @aws_cognito_user_pools
-  @auth(rules: [
-    { allow: groups, groups: ["admin", "boss"], operations: [create, update, delete, read]},
-    { allow: groups, groups: ["waiter"], operations: [read] }
-  ])
-{
-  id: ID!
-  name: String!
-  description: String
-  price: Number!
-  image: String!
-  dishTypeId: ID!
-  restaurantId: ID!
-}
+# type Dish
+# {
+#   id: ID!
+#   name: String!
+#   description: String
+#   price: Int!
+#   image: String!
+#   dishTypeId: ID!
+#   restaurantId: ID!
+# }
 
-type Order
-  @aws_cognito_user_pools
-  @auth(rules: [
-    { allow: groups, groups: ["admin"] },
-    { allow: groups, groups: ["boss"], operations: [read, update] },
-    { allow: groups, groups: ["waiter"], operations: [read, create] }
-  ])
-{
-  id: ID!
-  tableNumber: String!
-  waiterId: ID!
-  restaurantId: ID!
-  details: AWSJSON
-  status: OrderStatus!
-  createdAt: AWSDateTime!
-}
+# 暂时注释掉 Order 和 DailyStats 类型
+# type Order
+# {
+#   id: ID!
+#   tableNumber: String!
+#   waiterId: ID!
+#   restaurantId: ID!
+#   details: AWSJSON
+#   status: OrderStatus!
+#   createdAt: AWSDateTime!
+# }
 
-type DailyStats {
-  date: AWSDate
-  totalOrders: Int
-  totalAmount: Float
-}
+# type DailyStats {
+#   date: AWSDate
+#   totalOrders: Int
+#   totalAmount: Float
+# }
 
 # ==========================
-# QUERIES
+# QUERIES (仅保留 getRestaurant)
 # ==========================
 type Query {
   getRestaurant(id: ID!): Restaurant
-  listDishTypes(restaurantId: ID!): [DishType]
-  listDishes(restaurantId: ID!): [Dish]
-  listOrders(restaurantId: ID!, startDate: AWSDate, endDate: AWSDate): [Order]
-  getOrder(id: ID!): Order
-  getDailyStats(restaurantId: ID!, date: AWSDate!): DailyStats
-  listDemoDishTypes: [DishType]
-  listDemoDishes: [Dish]
 }
 
 # ==========================
-# Mutations
+# Mutations (仅保留 createRestaurant 和 updateRestaurant)
 # ==========================
 type Mutation {
-  inviteWaiter(email: String!, restaurantId: ID!): Boolean
-  deleteWaiter(sub: String!): Boolean
-  createDishType(input: CreateDishTypeInput!): DishType
-  updateDishType(id: ID!, input: UpdateDishTypeInput!): DishType
-  deleteDishType(id: ID!): DishType
-  createDish(input: CreateDishInput!): Dish
-  updateDish(id: ID!, input: UpdateDishInput!): Dish
-  deleteDish(id: ID!): Dish
-  createOrder(input: CreateOrderInput!): Order
-  updateOrderStatus(id: ID!, status: OrderStatus!): Order
-  createRestaurant(input: CreateRestaurantInput): Restaurant
+  createRestaurant(input: CreateRestaurantInput!): Restaurant
   updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant
-  updateSubscription(input: UpdateSubscriptionInput!): Restaurant
 }
 
 # ==========================
-# INPUT TYPES
+# INPUT TYPES (仅保留 Restaurant 相关的 Input Type)
 # ==========================
-input CreateDishTypeInput {
-  name: String!
-  restaurantId: ID!
-}
-
-input UpdateDishTypeInput {
-  name: String
-}
-
-input CreateDishInput {
-  name: String!
-  dishTypeId: ID!
-  restaurantId: ID!
-}
-
-input UpdateDishInput {
-  name: String
-  dishTypeId: ID
-}
-
-input CreateOrderInput {
-  tableNumber: String!
-  waiterId: ID!
-  restaurantId: ID!
-  details: AWSJSON!
-}
 
 input CreateRestaurantInput {
   name: String!
@@ -209,11 +144,6 @@ input UpdateRestaurantInput {
   name: String
   image: String
   address: String
-}
-
-input UpdateSubscriptionInput {
-  plan: SubscriptionPlan!
-  paymentMethod: String!
 }
 
 # ==========================
