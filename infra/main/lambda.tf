@@ -4,26 +4,65 @@ data "aws_s3_bucket" "lambda_code" {
     bucket = "emenu-lambda-code-bucket"
 }
 
-// Create a lambda function
+# --------------------------------------------------------------------------
+# Lambda Layer for Common Mongoose Models, managed by Terraform
+# --------------------------------------------------------------------------
+resource "aws_lambda_layer_version" "common_mongoose_models" {
+  layer_name  = "common_mongoose_models"
+  description = "The shared mongoose models for eMenu lambdas"
+  s3_bucket   = data.aws_s3_bucket.lambda_code.id
+  s3_key      = "layers/common_models/common_models_layer.zip"
+
+  compatible_runtimes = ["nodejs20.x"]
+}
+
+
+# ----------------------------------------------------------
+# Lambda: emenu-server (AppSync handler)
+# ----------------------------------------------------------
 resource "aws_lambda_function" "emenu_server" {
   function_name = "emenu-server"
   s3_bucket     = data.aws_s3_bucket.lambda_code.id
-  s3_key        = "lambda/lambda.zip"
+  s3_key        = "lambdas/emenu_server/appsync_main_handler.zip"
   handler       = "index.handler"
   runtime       = "nodejs20.x"
   role          = aws_iam_role.lambda_exec.arn
-  timeout       = 10
-
+  timeout       = 30
+  memory_size   = 128
+    
   environment {
     variables = {
       DB_HOST = var.db_host
     }
   }
 
+  layers = [aws_lambda_layer_version.common_mongoose_models.arn]
   # source_code_hash = filebase64sha256("../../lambda.zip")
 }
 
-// Create the execution role
+# ----------------------------------------------------------
+# Lambda: emenu_post_confirmation (Cognito PostConfirmation Trigger)
+# ----------------------------------------------------------
+resource "aws_lambda_function" "emenu_post_confirmation" {
+  function_name = "emenu_post_confirmation"
+  s3_bucket     =  data.aws_s3_bucket.lambda_code.id
+  s3_key        = "lambdas/emenu_post_confirmation/cognito_trigger.zip"
+
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"
+  timeout       = 10
+  memory_size   = 128
+
+  role = aws_iam_role.cognito_trigger.arn
+  environment {
+    variables = {
+      DB_HOST = var.db_host
+    }
+  }
+  layers = [aws_lambda_layer_version.common_mongoose_models.arn]
+}
+
+# Role for emenu-server
 resource "aws_iam_role" "lambda_exec" {
   name = "emenu_lambda_exec_role"
 
@@ -39,9 +78,49 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
+resource "aws_iam_role" "cognito_trigger" {
+  name = "emenu_cognito_post_confirmation_role"
+
+  assume_role_policy = jsonencode(
+    {
+      Version = "2012-10-17",
+      Statement = [{
+        Effect = "Allow",
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }]
+    }
+  )
+}
+
 // Create the basic exectuion policy
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
-    role       = aws_iam_role.lambda_exec.name
-    policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
 
+// add the basic lambda exectuion privillage to cognito_trigger
+resource "aws_iam_role_policy_attachment" "cognito_lambda_execution" {
+  role = aws_iam_role.cognito_trigger.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" 
+}
+// add the 'AdminAddUserToGroup' to cognito_trigger
+resource "aws_iam_role_policy" "cognito_admin_group_access" {
+  name = "AllowCognitoAdminGroupAccess"
+  role = aws_iam_role.cognito_trigger.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "cognito-idp:AdminAddUserToGroup"
+        ],
+        Resource = "arn:aws:cognito-idp:ap-southeast-2:205930647566:userpool/ap-southeast-2_0a2hzDvRi"
+      }
+    ]
+  })
 }

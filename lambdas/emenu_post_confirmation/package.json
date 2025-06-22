@@ -1,0 +1,11 @@
+    {
+      "name": "postconfirmation",
+      "version": "1.0.0",
+      "description": "The lambda post confirmation trigger to add user to group and create user record.",
+      "main": "index.mjs",
+      "type": "module",
+      "dependencies": {
+        "@aws-sdk/client-cognito-identity-provider": "^3.x.x"
+      }
+    }
+    

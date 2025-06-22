@@ -1,0 +1,10 @@
+{
+    "name": "common-mongoose-models-layer",
+    "version": "1.0.0",
+    "description": "Shared Mongoose models for eMenu Lambdas.",
+    "main": "index.js",
+    "type": "module",
+    "dependencies": {
+        "mongoose": "^8.5.1" 
+    }
+}

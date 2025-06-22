@@ -15,7 +15,7 @@ type User {
   id: ID!
   email: String!
   role: String!
-  restaurantId: ID!
+  restaurantId: ID
 }
 
 type Restaurant {
