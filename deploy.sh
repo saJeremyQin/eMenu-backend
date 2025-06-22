@@ -6,9 +6,9 @@ S3_BUCKET="emenu-lambda-code-bucket"
 REGION="ap-southeast-2"
 
 echo "📦 Install Layer dependencies..."
-cd lambdas/layers/common_models
+cd lambdas/layers/common_models/nodejs
 npm install
-cd ../../..
+cd ../../../..
 
 echo "📦 Package Layer zip..."
 cd lambdas/layers/common_models
