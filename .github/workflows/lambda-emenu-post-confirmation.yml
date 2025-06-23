@@ -7,7 +7,7 @@ on:
       - 'lambdas/emenu_post_confirmation/**'
 
 jobs:
-  deploy-emenu-server:
+  deploy-emenu-post-confirmation:
     runs-on: ubuntu-latest
 
     steps:

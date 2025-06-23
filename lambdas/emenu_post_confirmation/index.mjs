@@ -62,7 +62,7 @@ export const handler = async (event) => {
         } catch (error) {
             console.error("❌ Error adding user to group:", error);
             // Note: Even if group assignment fails, the Lambda will still return the event, allowing user registration to complete
-            // But in a real-world scenario, you might want to log this failure for alerting or auditing
+            // But in a real-world scenario, you might want to log this failure for alerting or auditing.
         }
     } else {
         console.log(`Client ID did NOT match. Expected: ${targetClientId}, Received: ${event.callerContext ? event.callerContext.clientId : 'undefined'}. Assigning default role '${assignedRole}'.`);
