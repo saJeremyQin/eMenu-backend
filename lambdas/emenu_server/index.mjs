@@ -80,7 +80,7 @@ const createRestaurant = async (args, identity) => {
     const existing = await Restaurant.findOne({ bossId: sub });
     if (existing) {
       console.warn(`Attempted to create restaurant for existing bossId: ${sub}. Returning existing restaurant.`);
-      // 重新添加手动映射作为诊断步骤
+      // convert it manually
       const existingObject = existing.toObject();
       existingObject.id = existingObject._id.toString(); // 强制映射 _id 到 id
       console.log('Returning existing restaurant:', JSON.stringify(existingObject, null, 2));
