@@ -28,7 +28,7 @@ export const handler = async (event) => {
     console.log("--- Post Confirmation Lambda Started ---");
     console.log("Full event received:", JSON.stringify(event, null, 2));
 
-     // Always attempt to connect to the database before processing logic
+    // Always attempt to connect to the database before processing logic
     try {
         await connectDb();
     } catch (err) {
