@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   sub: {
     type: String,
     required: true,
-    unique: true,  // 确保一个 Cognito 用户只存一条
+    unique: true,  // ensure it is unique, from cognito userSub
   },
   email: {
     type: String,
