@@ -1,14 +1,13 @@
-name: Lambda Deploy
+name: Deploy emenu-server Lambda
 
 on:
   push:
-    branches:
-      - dev
+    branches: [dev]
     paths:
-      - 'lambda/**'
+      - 'lambdas/emenu_server/**'
 
 jobs:
-  deploy-deploy:
+  deploy-emenu-server:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,12 +20,12 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: lambda
+        working-directory: lambdas/emenu_server
         run: npm install
 
-      - name: Zip Lambda code
-        working-directory: lambda
-        run: zip -r ../lambda.zip .
+      - name: Package Lambda zip
+        working-directory: lambdas/emenu_server
+        run: zip -r appsync_main_handler.zip .
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -36,14 +35,13 @@ jobs:
           aws-region: ap-southeast-2
 
       - name: Upload to S3
-        run: aws s3 cp lambda.zip s3://emenu-lambda-code-bucket/lambda/lambda.zip
+        run: aws s3 cp lambdas/emenu_server/appsync_main_handler.zip s3://emenu-lambda-code-bucket/lambdas/emenu_server/appsync_main_handler.zip
 
-      - name: Update Lambda function code
+      - name: Update Lambda function
         run: |
           aws lambda update-function-code \
             --function-name emenu-server \
             --s3-bucket emenu-lambda-code-bucket \
-            --s3-key lambda/lambda.zip
-
-      - name: Verify Lambda update
-        run: aws lambda get-function --function-name emenu-server
+            --s3-key lambdas/emenu_server/appsync_main_handler.zip
+            --region ap-southeast-2 \
+            --no-cli-pager

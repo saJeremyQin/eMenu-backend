@@ -1,0 +1,56 @@
+name: Lambda Layer Deploy
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'lambdas/layers/common_models/**'
+
+jobs:
+  deploy-layer-and-update-lambdas:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Layer dependencies
+        working-directory: lambdas/layers/common_models/nodejs
+        run: npm install
+
+      - name: Package Layer zip
+        working-directory: lambdas/layers/common_models
+        run: zip -r common_models_layer.zip nodejs
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+
+      - name: Upload Layer to S3
+        run: aws s3 cp lambdas/layers/common_models/common_models_layer.zip s3://emenu-lambda-code-bucket/layers/common_models/common_models_layer.zip
+
+      - name: Update lambda emenu-server
+        run: |
+          aws lambda update-function-code \
+            --function-name emenu-server \
+            --s3-bucket emenu-lambda-code-bucket \
+            --s3-key lambdas/emenu_server/appsync_main_handler.zip
+            --region ap-southeast-2 \
+            --no-cli-pager
+
+      - name: Update lambda emenu_post_confirmation
+        run: |
+          aws lambda update-function-code \
+            --function-name emenu_post_confirmation \
+            --s3-bucket emenu-lambda-code-bucket \
+            --s3-key lambdas/emenu_post_confirmation/cognito_trigger.zip
+            --region ap-southeast-2 \
+            --no-cli-pager
