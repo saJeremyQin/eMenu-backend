@@ -3,7 +3,7 @@ const { CognitoIdentityProviderClient, AdminAddUserToGroupCommand } = pkg;
 import mongoose from 'mongoose';
 import User from "/opt/nodejs/models/user.js";
 
-// Initialize AWS SDK client outside the handler to leverage Lambda warm starts
+// Initialize AWS SDK client outside the handler to leverage Lambda warm starts.
 const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-2" });
 
 const DB_HOST = process.env.DB_HOST;

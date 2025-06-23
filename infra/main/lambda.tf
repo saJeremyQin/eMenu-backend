@@ -24,7 +24,7 @@ resource "aws_lambda_layer_version" "common_mongoose_models" {
 
 
 # ----------------------------------------------------------
-# Lambda: emenu-server (AppSync handler)
+# Lambda: emenu-server (AppSync handler), time out is 30
 # ----------------------------------------------------------
 resource "aws_lambda_function" "emenu_server" {
   function_name = "emenu-server"
