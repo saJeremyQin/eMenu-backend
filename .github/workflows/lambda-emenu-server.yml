@@ -42,6 +42,6 @@ jobs:
           aws lambda update-function-code \
             --function-name emenu-server \
             --s3-bucket emenu-lambda-code-bucket \
-            --s3-key lambdas/emenu_server/appsync_main_handler.zip
+            --s3-key lambdas/emenu_server/appsync_main_handler.zip \
             --region ap-southeast-2 \
             --no-cli-pager

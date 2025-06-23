@@ -8,7 +8,7 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-
 
 const DB_HOST = process.env.DB_HOST;
 
-// Helper function to connect to the database, ensuring connection happens only once
+// Helper function to connect to the database, ensuring connection happens only once.
 const connectDb = async () => {
     if (mongoose.connection.readyState === 0) {
         try {
