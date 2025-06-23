@@ -4,16 +4,22 @@ data "aws_s3_bucket" "lambda_code" {
     bucket = "emenu-lambda-code-bucket"
 }
 
+data "aws_s3_object" "lambda_layer" {
+  bucket = data.aws_s3_bucket.lambda_code.id
+  key    = "layers/common_models/common_models_layer.zip"
+}
+
 # --------------------------------------------------------------------------
 # Lambda Layer for Common Mongoose Models, managed by Terraform
 # --------------------------------------------------------------------------
 resource "aws_lambda_layer_version" "common_mongoose_models" {
-  layer_name  = "common_mongoose_models"
-  description = "The shared mongoose models for eMenu lambdas"
-  s3_bucket   = data.aws_s3_bucket.lambda_code.id
-  s3_key      = "layers/common_models/common_models_layer.zip"
-
+  layer_name          = "common_mongoose_models"
+  description         = "The shared mongoose models for eMenu lambdas"
+  s3_bucket           = data.aws_s3_bucket.lambda_code.id
+  s3_key              = "layers/common_models/common_models_layer.zip"
   compatible_runtimes = ["nodejs20.x"]
+
+  source_code_hash = data.aws_s3_object.lambda_layer.etag
 }
 
 

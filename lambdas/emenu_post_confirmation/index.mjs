@@ -1,6 +1,7 @@
-import { CognitoIdentityProviderClient, AdminAddUserToGroupComman } from "@aws-sdk/client-cognito-identity-provider";
+import pkg from "@aws-sdk/client-cognito-identity-provider";
+const { CognitoIdentityProviderClient, AdminAddUserToGroupCommand } = pkg;
 import mongoose from 'mongoose';
-import User from "/opt/nodejs/models/user";
+import User from "/opt/nodejs/models/user.js";
 
 // Initialize AWS SDK client outside the handler to leverage Lambda warm starts
 const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-2" });
