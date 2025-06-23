@@ -8,18 +8,18 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
+    required: true,
+    unique: true
   },
   role: {
     type: String,
-    enum: ['boss', 'waiter', 'demo'],
+    enum: ['boss', 'waiter', 'demo','admin'],
     required: true,
   },
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Restaurant',
-    required: function () {
-      return this.role !== 'demo';  // demo 用户可以没有餐馆
-    },
+    required: false
   },
 }, {
   timestamps: true

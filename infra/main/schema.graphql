@@ -1,6 +1,4 @@
 # GraphQL Schema for eMenu
-scalar AWSDateTime
-
 enum SubscriptionPlan {
   BASIC
   PREMIUM

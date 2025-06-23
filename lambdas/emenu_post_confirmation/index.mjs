@@ -71,22 +71,24 @@ export const handler = async (event) => {
     // 2. Insert User record into MongoDB
     try {
         // Check if the user already exists (to prevent duplicate triggers or ensure idempotency)
-        const existingUser = await User.findOne({ id: userSub });
+        const existingUser = await User.findOne({ sub: userSub });
         if (!existingUser) {
             console.log(`Creating new user record for ${userEmail} in MongoDB with role: ${assignedRole}`);
+            console.log(`the userSub is ${userSub}, email is ${userEmail}`);
+            
             const newUser = new User({
-                id: userSub, // Use Cognito's sub as the unique ID in MongoDB
+                sub: userSub,             // 将 userSub 赋值给 sub 字段
                 email: userEmail,
                 role: assignedRole,
-                restaurantId: null, // Initialized as null, as it's typically unknown at registration  
+                restaurantId: undefined 
             });
 
             await newUser.save();
             console.log(`✅ Successfully created user record in MongoDB for ${userEmail}`);
         } else {
-            console.log(`User record for ${userEmail} (ID: ${userSub}) already exists in MongoDB. Updating existing record.`);
+            console.log(`User record for ${userEmail} (sub: ${userSub}) already exists in MongoDB. Updating existing record.`);
             // Optional: If the user record exists, you might want to update its role or other attributes
-            await User.updateOne({ id: userSub }, { $set: { role: assignedRole } });
+            await User.updateOne({ sub: userSub }, { $set: { role: assignedRole } });
             console.log(`✅ User record for ${userEmail} updated in MongoDB.`);
         }
     } catch (error) {
