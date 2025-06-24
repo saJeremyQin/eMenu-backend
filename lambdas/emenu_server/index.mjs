@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Restaurant from 'opt/nodejs/models/restaurant.js';
+import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 
 const DB_HOST = process.env.DB_HOST;
@@ -61,7 +61,24 @@ export const handler = async (event, context) => {
 
 const listDishes = async (args, identity) => {
   console.log('Executing listDishes...');
-  return [];
+
+  const sub = identity.sub;
+
+  const user = await User.findOne({ sub: sub });
+  if (!user) {
+    throw new Error("User not found");
+  }  
+
+  if (!user.restaurantId) {
+    throw new Error("User has no restaurant assigned");
+  }
+  console.log('The restaurantId is', user.restaurantId);
+
+
+  const dishes = await Dish.find({ restaurantId: user.restaurantId });
+
+  // 转换格式以便 GraphQL 接收
+  return dishes.map(d => d.toJSON());
 };
 
 const createRestaurant = async (args, identity) => {

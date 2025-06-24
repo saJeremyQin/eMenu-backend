@@ -36,6 +36,12 @@ type Dish {
   restaurantId: ID!
 }
 
+type DishType {
+  id: ID!
+  title: String!
+  alias: String
+}
+
 type Query {
   getRestaurant(id: ID!): Restaurant
   listDishes(restaurantId: ID!): [Dish]

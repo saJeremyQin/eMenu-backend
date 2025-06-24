@@ -1,5 +1,6 @@
 // Require the mongoose library
 import mongoose from "mongoose";
+import DishType from "./dishType";
 
 const dishSchema = new mongoose.Schema(
     {
@@ -10,20 +11,34 @@ const dishSchema = new mongoose.Schema(
         description:{
             type: String,
         },
-        type: {
-            type: String,
-            required: true
-        },
         price: {
             type: Number,
             required: true
         },
         image:{
             type: String
+        },
+        dishTypeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'DishType',
+            required: true
+        },
+        restaurantId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Restaurant',
+            required: true
         }
     },
     {
-        timestamps: true
+        timestamps: true,
+        toJSON: {
+            virtuals: true,        // 添加虚拟字段（id）
+            versionKey: false,     // 去掉 __v 字段
+            transform: (_, ret) => {
+                ret.id = ret._id.toString();  // 映射 _id -> id
+                delete ret._id;               // 删除 _id，避免重复
+            }
+        }
     }
 );
 
