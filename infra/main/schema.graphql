@@ -44,7 +44,7 @@ type DishType {
 
 type Query {
   getRestaurant(id: ID!): Restaurant
-  listDishes(restaurantId: ID!): [Dish]
+  listDishes: [Dish]
 }
 
 type Mutation {

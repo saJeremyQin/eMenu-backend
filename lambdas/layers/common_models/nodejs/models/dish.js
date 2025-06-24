@@ -1,6 +1,7 @@
 // Require the mongoose library
 import mongoose from "mongoose";
-import DishType from "./dishType";
+import DishType from "./dishType.js";
+import Restaurant from "./restaurant.js"
 
 const dishSchema = new mongoose.Schema(
     {

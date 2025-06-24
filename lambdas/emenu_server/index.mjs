@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
+import Dish from '/opt/nodejs/models/dish.js';
 
 const DB_HOST = process.env.DB_HOST;
 
@@ -26,7 +27,7 @@ export const handler = async (event, context) => {
 
     await connectDb();
 
-    const field = event.field;
+    const field = event.fieldName;
     const identity = event.identity;
 
     if (!identity) {
@@ -45,7 +46,7 @@ export const handler = async (event, context) => {
 
     switch (field) {
       case "listDishes":
-        return await listDishes(event.arguments, identity);
+        return await listDishes(identity);
       case "createRestaurant":
         return await createRestaurant(event.arguments, identity);
       default:
@@ -59,7 +60,7 @@ export const handler = async (event, context) => {
   }
 };
 
-const listDishes = async (args, identity) => {
+const listDishes = async (identity) => {
   console.log('Executing listDishes...');
 
   const sub = identity.sub;
