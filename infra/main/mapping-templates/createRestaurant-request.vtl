@@ -2,10 +2,14 @@
   "version": "2018-05-29",
   "operation": "Invoke",
   "payload": {
-    "field": "createRestaurant",
-    "arguments": {
-      "input": $util.toJson($context.arguments.input)
+    "typeName": "Mutation",
+    "fieldName": "createRestaurant",
+    "arguments": {       ## <-- 关键修正：这里包裹一层 JSON 对象
+      "input": $util.toJson($context.arguments.input) ## <-- 重新明确传递 input 对象
     },
-    "identity": $util.toJson($context.identity)
+    "identity": $util.toJson($context.identity),
+    "source": $util.toJson($context.source),
+    "request": $util.toJson($context.request),
+    "prev": $util.toJson($context.prev)
   }
 }
