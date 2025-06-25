@@ -13,13 +13,6 @@ resource "aws_appsync_graphql_api" "emenu_apis" {
   }
 }
 
-// Create API_KEY resoure
-resource "aws_appsync_api_key" "emenu_api_key" {
-  api_id  = aws_appsync_graphql_api.emenu_apis.id
-  description = "Managed by Terraform"
-  expires = timeadd(timestamp(), "${local.api_key_valid_seconds}s")
-}
-
 // Configure the lambda function as a datasource for AppSync apis
 resource "aws_appsync_datasource" "emenu_datasource" {
   api_id           = aws_appsync_graphql_api.emenu_apis.id
