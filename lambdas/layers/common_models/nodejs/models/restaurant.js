@@ -32,7 +32,7 @@ const restaurantSchema = new mongoose.Schema({
       versionKey: false,              // remove __v field
       transform: (_, ret) => {
         ret.id = ret._id.toString();  // map _id -> id
-        delete ret._id;               // 删除 _id，避免重复
+        delete ret._id;               // delete _id，avoid duplication
       }
     }
 });

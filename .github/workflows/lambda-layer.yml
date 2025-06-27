@@ -46,7 +46,7 @@ jobs:
         id: publish_layer # Add an ID to this step to reference its outputs
         run: |
           LAYER_ARN=$(aws lambda publish-layer-version \
-            --layer-name common-mongoose-models \ 
+            --layer-name common-mongoose-models \
             --description "Updated common models layer via GitHub Actions" \
             --content S3Bucket=${{ env.S3_BUCKET_NAME }},S3Key=layers/common_models/common_models_layer.zip \
             --compatible-runtimes nodejs20.x \
