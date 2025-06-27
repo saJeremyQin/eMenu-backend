@@ -59,16 +59,19 @@ jobs:
       # --- Steps to Update Lambda Functions to Use the New Layer Version ---
       - name: Get current Lambda configurations (emenu-server)
         id: get_server_lambda_config
+        # Fetch JSON and Base64 encode it for safe passing via GITHUB_OUTPUT
         run: |
-          CURRENT_LAYERS=$(aws lambda get-function-configuration --function-name emenu-server --region ap-southeast-2 --query 'Layers[].Arn' --output json)
-          echo "CURRENT_SERVER_LAYERS=$CURRENT_LAYERS" >> $GITHUB_OUTPUT
+          CURRENT_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu-server --region ap-southeast-2 --query 'Layers[].Arn' --output json)
+          echo "CURRENT_SERVER_LAYERS_BASE64=$(echo -n "$CURRENT_LAYERS_JSON" | base64 -w 0)" >> $GITHUB_OUTPUT
 
+        # Decode Base64 string back to JSON, then process with jq
       - name: Update Lambda Function Configuration (emenu-server)
         run: |
+
           NEW_LAYERS_ARRAY=()
           NEW_LAYERS_ARRAY+=("${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}")
 
-          EXISTING_SERVER_LAYERS=$(echo '${{ steps.get_server_lambda_config.outputs.CURRENT_SERVER_LAYERS }}' | jq -r '.[]' | grep -v "common-mongoose-models")
+          EXISTING_SERVER_LAYERS=$(echo '${{ steps.get_server_lambda_config.outputs.CURRENT_SERVER_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common-mongoose-models")
           for layer_arn in $EXISTING_SERVER_LAYERS; do
             NEW_LAYERS_ARRAY+=("$layer_arn")
           done
@@ -85,15 +88,16 @@ jobs:
       - name: Get current Lambda configurations (emenu_post_confirmation)
         id: get_post_confirmation_lambda_config
         run: |
-          CURRENT_LAYERS=$(aws lambda get-function-configuration --function-name emenu_post_confirmation --region ap-southeast-2 --query 'Layers[].Arn' --output json)
-          echo "CURRENT_POST_CONFIRMATION_LAYERS=$CURRENT_LAYERS" >> $GITHUB_OUTPUT
+          CURRENT_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu_post_confirmation --region ap-southeast-2 --query 'Layers[].Arn' --output json)
+          echo "CURRENT_POST_CONFIRMATION_LAYERS_BASE64=$(echo -n "$CURRENT_LAYERS_JSON" | base64 -w 0)" >> $GITHUB_OUTPUT
 
+      # Decode Base64 string back to JSON, then process with jq
       - name: Update Lambda Function Configuration (emenu_post_confirmation)
         run: |
           NEW_LAYERS_ARRAY=()
           NEW_LAYERS_ARRAY+=("${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}")
 
-          EXISTING_POST_CONFIRMATION_LAYERS=$(echo '${{ steps.get_post_confirmation_lambda_config.outputs.CURRENT_POST_CONFIRMATION_LAYERS }}' | jq -r '.[]' | grep -v "common-mongoose-models")
+          EXISTING_POST_CONFIRMATION_LAYERS=$(echo '${{ steps.get_post_confirmation_lambda_config.outputs.CURRENT_POST_CONFIRMATION_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common-mongoose-models")
           for layer_arn in $EXISTING_POST_CONFIRMATION_LAYERS; do
             NEW_LAYERS_ARRAY+=("$layer_arn")
           done
