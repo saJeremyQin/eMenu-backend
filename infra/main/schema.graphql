@@ -9,10 +9,17 @@ enum OrderStatus {
   CHECKOUT
 }
 
+enum Role {
+  boss
+  waiter
+  demo
+  admin
+}
+
 type User {
-  id: ID!
+  id: ID!              # save the sub of cognito user
   email: String!
-  role: String!
+  role: Role! 
   restaurantId: ID
 }
 
@@ -34,17 +41,21 @@ type Dish {
   image: String!
   dishTypeId: ID!
   restaurantId: ID!
+  dishType: DishType                     #support nested query
 }
 
 type DishType {
   id: ID!
   title: String!
   alias: String
+  restaurantId: ID
 }
 
 type Query {
   getRestaurant(id: ID!): Restaurant
+  getUser(id: ID!): User
   listDishes: [Dish]
+  listDishTypes: [DishType]
 }
 
 type Mutation {

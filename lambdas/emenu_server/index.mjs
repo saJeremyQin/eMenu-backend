@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 import Dish from '/opt/nodejs/models/dish.js';
+import DishType from '/opt/nodejs/models/dishType.js';
 
 const DB_HOST = process.env.DB_HOST;
 
@@ -20,6 +21,21 @@ const connectDb = async () => {
   }
 };
 
+// Helper function to get restaurantId from user identity (re-used for multiple resolvers)
+const getRestaurantIdFromIdentity = async (identity) => {
+  if (!identity || !identity.sub) {
+    throw new Error("Authentication required: User identity is missing.");
+  }
+  const user = await User.findOne({ sub: identity.sub });
+  if (!user) {
+    throw new Error("User not found.");
+  }
+  if (!user.restaurantId) {
+    throw new Error("User is not associated with a restaurant.");
+  }
+  return user.restaurantId;
+};
+
 
 export const handler = async (event, context) => {
   try {
@@ -30,8 +46,8 @@ export const handler = async (event, context) => {
     const field = event.fieldName;
     const identity = event.identity;
 
-    if (!identity) {
-      console.error('Auth Check: No identity found in AppSync event context.');
+    if (!identity || !identity.sub) {
+      console.error('Auth Check: No identity found or missing sub in AppSync event context.');
       throw new Error('Authentication required.');
     }
     console.log('Auth Check: Identity object from AppSync:', JSON.stringify(identity, null, 2));
@@ -45,6 +61,8 @@ export const handler = async (event, context) => {
     }
 
     switch (field) {
+      case "getUser":
+        return await getUser(event.arguments, identity);
       case "listDishes":
         return await listDishes(identity);
       case "createRestaurant":
@@ -60,26 +78,57 @@ export const handler = async (event, context) => {
   }
 };
 
+const getUser = async (args, identity) => {
+  console.log('Executing getUser...');
+  const requestedSub = args.id; // The 'id' parameter from the GraphQL query
+  const callerSub = identity.sub; // The 'sub' of the authenticated caller
+  const callerGroups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
+
+  console.log(`getUser request: Caller Sub: ${callerSub}, Requested Sub: ${requestedSub}`);
+  console.log(`Caller Groups: ${callerGroups.join(', ')}`);
+
+  // Authorization check
+  // 1. If caller is an 'admin', they can query any user
+  if (callerGroups.includes("admin")) {
+    console.log(`Authorization: Caller ${callerSub} is an admin. Allowing query for ${requestedSub}.`);
+  } 
+  // 2. If not an admin, check if the requested ID matches the caller's ID
+  else if (requestedSub === callerSub) {
+    console.log(`Authorization: Caller ${callerSub} is querying their own user data. Allowing.`);
+  } 
+  // 3. Otherwise, unauthorized
+  else {
+    console.error(`Authorization: Caller ${callerSub} is not authorized to query user ${requestedSub}. Not an admin and not querying own data.`);
+    throw new Error("Unauthorized: You are not authorized to access this user's information.");
+  }
+  
+  try {
+    const user = await User.findOne({ sub: requestedSub }); // Query using the requestedSub
+    if (!user) {
+      console.error(`User with sub ${requestedSub} not found.`);
+      return null;
+    }
+    return user.toJSON(); 
+  } catch (err) {
+    console.error(`Error fetching user ${requestedSub}:`, err);
+    throw new Error(`Failed to fetch user: ${err.message}`);
+  }
+};
+
 const listDishes = async (identity) => {
   console.log('Executing listDishes...');
+  const restaurantId = await getRestaurantIdFromIdentity(identity);
+  console.log('The user\'s restaurantId is:', restaurantId);
 
-  const sub = identity.sub;
+  // Key change: Use populate to get DishType data
+  const dishes = await Dish.find({ restaurantId: restaurantId }).populate('dishTypeId');          
 
-  const user = await User.findOne({ sub: sub });
-  if (!user) {
-    throw new Error("User not found");
-  }  
-
-  if (!user.restaurantId) {
-    throw new Error("User has no restaurant assigned");
-  }
-  console.log('The restaurantId is', user.restaurantId);
-
-
-  const dishes = await Dish.find({ restaurantId: user.restaurantId });
-
-  // 转换格式以便 GraphQL 接收
-  return dishes.map(d => d.toJSON());
+  return dishes.map( d => {
+    const dishObj = d.toJSON();
+    dishObj.dishType = dishObj.dishTypeId;
+    return dishObj;
+  });
+  // To Be updated 
 };
 
 const createRestaurant = async (args, identity) => {
