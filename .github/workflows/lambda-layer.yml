@@ -76,7 +76,7 @@ jobs:
 
           # Decode Base64 string back to JSON, then process with jq
           # KEY FIX: Changed "common-mongoose-models" to "common_mongoose_models" (underscore)
-          EXISTING_SERVER_LAYERS=$(echo '${{ steps.get_server_lambda_config.outputs.CURRENT_SERVER_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common_mongoose_models")
+          EXISTING_SERVER_LAYERS=$(echo '${{ steps.get_server_lambda_config.outputs.CURRENT_SERVER_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common_mongoose_models" || true)
           for layer_arn in $EXISTING_SERVER_LAYERS; do
             NEW_LAYERS_ARRAY+=("$layer_arn")
           done
@@ -104,7 +104,7 @@ jobs:
 
           # Decode Base64 string back to JSON, then process with jq
           # KEY FIX: Changed "common-mongoose-models" to "common_mongoose_models" (underscore)
-          EXISTING_POST_CONFIRMATION_LAYERS=$(echo '${{ steps.get_post_confirmation_lambda_config.outputs.CURRENT_POST_CONFIRMATION_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common_mongoose_models")
+          EXISTING_POST_CONFIRMATION_LAYERS=$(echo '${{ steps.get_post_confirmation_lambda_config.outputs.CURRENT_POST_CONFIRMATION_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common_mongoose_models" || true)
           for layer_arn in $EXISTING_POST_CONFIRMATION_LAYERS; do
             NEW_LAYERS_ARRAY+=("$layer_arn")
           done

@@ -12,7 +12,7 @@ const dishTypeSchema = new mongoose.Schema(
   },{
     timestamps: true,
     toJSON: {
-      virtuals: true,        // 添加虚拟字段（id）
+      virtuals: true,                 // add virtual field（id）
       versionKey: false,     // 去掉 __v 字段
       transform: (_, ret) => {
         ret.id = ret._id.toString();  // 映射 _id -> id
