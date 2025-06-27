@@ -24,11 +24,11 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true,
     toJSON: {
-    virtuals: true,        // 添加虚拟字段（id）
-    versionKey: false,     // 去掉 __v 字段
+    virtuals: true,                 // add virtual field（id）
+    versionKey: false,              // remove __v field
     transform: (_, ret) => {
-      ret.id = ret.sub;  // 映射 _id -> id
-      delete ret._id;               // 删除 _id，避免重复
+      ret.id = ret.sub;             // map _id -> id
+      delete ret._id;               // delete _id，avoid duplicate
       delete ret.__v;
     }
   }

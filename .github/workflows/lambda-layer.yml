@@ -46,7 +46,7 @@ jobs:
           LAYER_ARN=$(aws lambda publish-layer-version \
             --layer-name common_mongoose_models \
             --description "Updated common models layer via GitHub Actions" \
-            --content S3Bucket=${{ env.S3_BUCKET_NAME }},S3Key=layers/common_models/common_models_layer.zip \ # <-- Use fixed S3 key
+            --content S3Bucket=${{ env.S3_BUCKET_NAME }},S3Key=layers/common_models/common_models_layer.zip \
             --compatible-runtimes nodejs20.x \
             --compatible-architectures "x86_64" \
             --region ap-southeast-2 \
