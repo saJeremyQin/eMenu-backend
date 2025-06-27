@@ -31,7 +31,7 @@ const restaurantSchema = new mongoose.Schema({
       virtuals: true,                 // add virtual field（id）
       versionKey: false,              // remove __v field
       transform: (_, ret) => {
-        ret.id = ret._id.toString();  // 映射 _id -> id
+        ret.id = ret._id.toString();  // map _id -> id
         delete ret._id;               // 删除 _id，避免重复
       }
     }
