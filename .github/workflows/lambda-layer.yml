@@ -59,29 +59,18 @@ jobs:
 
       # --- Steps to Update Lambda Functions to Use the New Layer Version ---
       # These steps are crucial for the layer update to take effect on the Lambda functions.
-      # We need to fetch existing layers, remove old versions of our target layer,
-      # and add the new layer version ARN.
-
-      - name: Get current Lambda configurations (emenu-server)
-        id: get_server_lambda_config
-        run: |
-          # Fetch JSON and Base64 encode it for safe passing via GITHUB_OUTPUT
-          CURRENT_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu-server --region ap-southeast-2 --query 'Layers[].Arn' --output json)
-          echo "CURRENT_SERVER_LAYERS_BASE64=$(echo -n "$CURRENT_LAYERS_JSON" | base64 -w 0)" >> $GITHUB_OUTPUT
-
       - name: Update Lambda Function Configuration (emenu-server)
         run: |
-          NEW_LAYERS_ARRAY=()
-          NEW_LAYERS_ARRAY+=("${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}")
+          # Fetch current layers as a JSON array
+          CURRENT_LAMBDA_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu-server --region ap-southeast-2 --query 'Layers[].Arn' --output json)
 
-          # Decode Base64 string back to JSON, then process with jq
-          # KEY FIX: Changed "common-mongoose-models" to "common_mongoose_models" (underscore)
-          EXISTING_SERVER_LAYERS=$(echo '${{ steps.get_server_lambda_config.outputs.CURRENT_SERVER_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common_mongoose_models" || true)
-          for layer_arn in $EXISTING_SERVER_LAYERS; do
-            NEW_LAYERS_ARRAY+=("$layer_arn")
-          done
-
-          NEW_LAYERS=$(IFS=,; echo "${NEW_LAYERS_ARRAY[*]}")
+          # Use jq to filter out the old 'common-mongoose-models' layer and add the new one.
+          # Then join them with commas for the --layers parameter.
+          NEW_LAYERS=$(echo "$CURRENT_LAMBDA_LAYERS_JSON" | \
+            jq -r --arg new_layer "${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}" '
+              map(select(. | contains("common-mongoose-models") | not)) + [$new_layer] |
+              join(",")
+            ')
           
           echo "Updating emenu-server with layers: $NEW_LAYERS"
           aws lambda update-function-configuration \
@@ -90,26 +79,18 @@ jobs:
             --region ap-southeast-2 \
             --no-cli-pager
 
-      - name: Get current Lambda configurations (emenu_post_confirmation)
-        id: get_post_confirmation_lambda_config
-        run: |
-          # Fetch JSON and Base64 encode it for safe passing via GITHUB_OUTPUT
-          CURRENT_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu_post_confirmation --region ap-southeast-2 --query 'Layers[].Arn' --output json)
-          echo "CURRENT_POST_CONFIRMATION_LAYERS_BASE64=$(echo -n "$CURRENT_LAYERS_JSON" | base64 -w 0)" >> $GITHUB_OUTPUT
-
       - name: Update Lambda Function Configuration (emenu_post_confirmation)
         run: |
-          NEW_LAYERS_ARRAY=()
-          NEW_LAYERS_ARRAY+=("${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}")
+          # Fetch current layers as a JSON array
+          CURRENT_LAMBDA_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu_post_confirmation --region ap-southeast-2 --query 'Layers[].Arn' --output json)
 
-          # Decode Base64 string back to JSON, then process with jq
-          # KEY FIX: Changed "common-mongoose-models" to "common_mongoose_models" (underscore)
-          EXISTING_POST_CONFIRMATION_LAYERS=$(echo '${{ steps.get_post_confirmation_lambda_config.outputs.CURRENT_POST_CONFIRMATION_LAYERS_BASE64 }}' | base64 -d | jq -r '.[]' | grep -v "common_mongoose_models" || true)
-          for layer_arn in $EXISTING_POST_CONFIRMATION_LAYERS; do
-            NEW_LAYERS_ARRAY+=("$layer_arn")
-          done
-
-          NEW_LAYERS=$(IFS=,; echo "${NEW_LAYERS_ARRAY[*]}")
+          # Use jq to filter out the old 'common-mongoose-models' layer and add the new one.
+          # Then join them with commas for the --layers parameter.
+          NEW_LAYERS=$(echo "$CURRENT_LAMBDA_LAYERS_JSON" | \
+            jq -r --arg new_layer "${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}" '
+              map(select(. | contains("common-mongoose-models") | not)) + [$new_layer] |
+              join(",")
+            ')
 
           echo "Updating emenu_post_confirmation with layers: $NEW_LAYERS"
           aws lambda update-function-configuration \
