@@ -4,11 +4,16 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'lambdas/layers/common_models/**' # Trigger only when common_models layer changes
+      - 'lambdas/layers/common_models/**'  # only triggered when common_models changes
 
 jobs:
   deploy-layer-and-update-lambdas:
     runs-on: ubuntu-latest
+
+    env:
+      S3_BUCKET_NAME: emenu-lambda-code-bucket
+      LAYER_NAME: common-mongoose-models
+      REGION: ap-southeast-2
 
     steps:
       - name: Checkout repo
@@ -32,70 +37,60 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-2
+          aws-region: ${{ env.REGION }}
 
-      # --- Optimized Step: Upload Layer zip to S3 (fixed key) ---
       - name: Upload Layer zip to S3
         run: |
-          # Upload to a fixed S3 key. Lambda 'publish-layer-version' will detect content changes.
-          aws s3 cp lambdas/layers/common_models/common_models_layer.zip s3://emenu-lambda-code-bucket/layers/common_models/common_models_layer.zip
-        env:
-          S3_BUCKET_NAME: emenu-lambda-code-bucket # Ensure this matches your S3 bucket name
+          aws s3 cp lambdas/layers/common_models/common_models_layer.zip s3://$S3_BUCKET_NAME/layers/common_models/common_models_layer.zip
 
       - name: Publish new Layer Version
-        id: publish_layer # Add an ID to this step to reference its outputs
+        id: publish_layer
         run: |
           LAYER_ARN=$(aws lambda publish-layer-version \
-            --layer-name common-mongoose-models \
+            --layer-name $LAYER_NAME \
             --description "Updated common models layer via GitHub Actions" \
-            --content S3Bucket=${{ env.S3_BUCKET_NAME }},S3Key=layers/common_models/common_models_layer.zip \
+            --content S3Bucket=$S3_BUCKET_NAME,S3Key=layers/common_models/common_models_layer.zip \
             --compatible-runtimes nodejs20.x \
-            --compatible-architectures "x86_64" \
-            --region ap-southeast-2 \
+            --compatible-architectures x86_64 \
+            --region $REGION \
             --query 'LayerVersionArn' --output text)
-          echo "LAYER_VERSION_ARN=$LAYER_ARN" >> $GITHUB_OUTPUT
-        env:
-          S3_BUCKET_NAME: emenu-lambda-code-bucket # Make sure S3 bucket name is available
 
-      # --- Steps to Update Lambda Functions to Use the New Layer Version ---
-      # These steps are crucial for the layer update to take effect on the Lambda functions.
+          echo "LAYER_VERSION_ARN=$LAYER_ARN" >> $GITHUB_OUTPUT
 
       - name: Update Lambda Function Configuration (emenu-server)
         run: |
-          # Fetch current layers as a JSON array
-          CURRENT_LAMBDA_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu-server --region ap-southeast-2 --query 'Layers[].Arn' --output json)
+          OLD_LAYERS=$(aws lambda get-function-configuration \
+            --function-name emenu-server \
+            --region $REGION \
+            --query 'Layers[].Arn' \
+            --output json)
 
-          # Use jq to filter out the old 'common-mongoose-models' layer and add the new one.
-          # Then join them with commas for the --layers parameter.
-          NEW_LAYERS=$(echo "$CURRENT_LAMBDA_LAYERS_JSON" | \
-            jq -r --arg new_layer "${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}" '
-              map(select(. | contains("common-mongoose-models") | not)) + [$new_layer] |
-              join(",")
-            ')
-          
+          NEW_LAYERS=$(echo "$OLD_LAYERS" | jq -r --arg new_layer "${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}" '
+            map(select(. | contains("common-mongoose-models") | not)) + [$new_layer] | join(",")')
+
           echo "Updating emenu-server with layers: $NEW_LAYERS"
+
           aws lambda update-function-configuration \
             --function-name emenu-server \
             --layers "$NEW_LAYERS" \
-            --region ap-southeast-2 \
+            --region $REGION \
             --no-cli-pager
 
       - name: Update Lambda Function Configuration (emenu_post_confirmation)
         run: |
-          # Fetch current layers as a JSON array
-          CURRENT_LAMBDA_LAYERS_JSON=$(aws lambda get-function-configuration --function-name emenu_post_confirmation --region ap-southeast-2 --query 'Layers[].Arn' --output json)
+          OLD_LAYERS=$(aws lambda get-function-configuration \
+            --function-name emenu_post_confirmation \
+            --region $REGION \
+            --query 'Layers[].Arn' \
+            --output json)
 
-          # Use jq to filter out the old 'common-mongoose-models' layer and add the new one.
-          # Then join them with commas for the --layers parameter.
-          NEW_LAYERS=$(echo "$CURRENT_LAMBDA_LAYERS_JSON" | \
-            jq -r --arg new_layer "${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}" '
-              map(select(. | contains("common-mongoose-models") | not)) + [$new_layer] |
-              join(",")
-            ')
+          NEW_LAYERS=$(echo "$OLD_LAYERS" | jq -r --arg new_layer "${{ steps.publish_layer.outputs.LAYER_VERSION_ARN }}" '
+            map(select(. | contains("common-mongoose-models") | not)) + [$new_layer] | join(",")')
 
           echo "Updating emenu_post_confirmation with layers: $NEW_LAYERS"
+
           aws lambda update-function-configuration \
             --function-name emenu_post_confirmation \
             --layers "$NEW_LAYERS" \
-            --region ap-southeast-2 \
+            --region $REGION \
             --no-cli-pager

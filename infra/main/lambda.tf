@@ -13,7 +13,7 @@ data "aws_s3_object" "lambda_layer" {
 # Lambda Layer for Common Mongoose Models, managed by Terraform
 # --------------------------------------------------------------------------
 resource "aws_lambda_layer_version" "common_mongoose_models" {
-  layer_name          = "common_mongoose_models"
+  layer_name          = "common-mongoose-models"
   description         = "The shared mongoose models for eMenu lambdas"
   s3_bucket           = data.aws_s3_bucket.lambda_code.id
   s3_key              = "layers/common_models/common_models_layer.zip"

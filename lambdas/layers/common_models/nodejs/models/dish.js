@@ -34,7 +34,7 @@ const dishSchema = new mongoose.Schema(
         timestamps: true,
         toJSON: {
             virtuals: true,                   // add virtual field（id）
-            versionKey: false,     // 去掉 __v 字段
+            versionKey: false,                // 去掉 __v 字段
             transform: (_, ret) => {
                 ret.id = ret._id.toString();  // 映射 _id -> id
                 delete ret._id;               // 删除 _id，避免重复
