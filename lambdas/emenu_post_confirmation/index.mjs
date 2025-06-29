@@ -44,7 +44,7 @@ export const handler = async (event) => {
 
     // Determine the user's initial role based on business logic
     let assignedRole = "waiter"; // Default role
-    const targetClientId = "232fs0ql6m9mjlr79aariv29c3";
+    const targetClientId = "40nv3qru4flrlbcjftgq7qd7q0";
 
       // 1. Add user to the 'boss' user group (based on clientId)
     if (event.callerContext && event.callerContext.clientId && event.callerContext.clientId === targetClientId) {

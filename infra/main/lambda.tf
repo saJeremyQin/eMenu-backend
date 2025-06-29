@@ -134,7 +134,8 @@ resource "aws_iam_role_policy" "cognito_admin_group_access" {
         Action = [
           "cognito-idp:AdminAddUserToGroup"
         ],
-        Resource = "arn:aws:cognito-idp:ap-southeast-2:205930647566:userpool/ap-southeast-2_0a2hzDvRi"
+        # Resource = "arn:aws:cognito-idp:ap-southeast-2:205930647566:userpool/ap-southeast-2_0a2hzDvRi"
+        Resource = aws_cognito_user_pool.emenu_user_pool.arn
       }
     ]
   })
