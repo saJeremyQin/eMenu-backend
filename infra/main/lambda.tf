@@ -68,6 +68,15 @@ resource "aws_lambda_function" "emenu_post_confirmation" {
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
 }
 
+// add permission, allow cognito user pool to invoke emenu_post_confirmation
+resource "aws_lambda_permission" "allow_cognito_user_pool" {
+  statement_id  = "AllowExecutionFromCognitoUserPool"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.emenu_post_confirmation.function_name
+  principal     = "cognito-idp.amazonaws.com"
+
+  source_arn = aws_cognito_user_pool.emenu_user_pool.arn
+}
 # Role for emenu-server
 resource "aws_iam_role" "lambda_exec" {
   name = "emenu_lambda_exec_role"

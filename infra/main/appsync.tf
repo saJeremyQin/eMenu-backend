@@ -7,7 +7,8 @@ resource "aws_appsync_graphql_api" "emenu_apis" {
   schema              = file("${path.module}/schema.graphql")
 
   user_pool_config {
-    user_pool_id   = "ap-southeast-2_0a2hzDvRi"
+    # user_pool_id   = "ap-southeast-2_0a2hzDvRi"
+    user_pool_id = aws_cognito_user_pool.emenu_user_pool.id
     aws_region     = var.aws_region
     default_action = "ALLOW"
   }
