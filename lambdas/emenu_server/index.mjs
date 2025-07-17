@@ -3,21 +3,49 @@ import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 import Dish from '/opt/nodejs/models/dish.js';
 import DishType from '/opt/nodejs/models/dishType.js';
+import { SSMClient, GetParameterCommand} from "@aws-sdk/client-ssm";
 
-const DB_HOST = process.env.DB_HOST;
+let cachedDbUri = null;
 
 const connectDb = async () => {
-  if (mongoose.connection.readyState === 0) {
-    try {
-      console.log("🌐 Attempting to connect to MongoDB...");
-      await mongoose.connect(DB_HOST);
-      console.log("✅ MongoDB connected successfully!");
-    } catch (dbError) {
-      console.error("❌ MongoDB connection failed:", dbError);
-      throw new Error(`Database connection failed: ${dbError.message}`);
-    }
-  } else {
+  if (mongoose.connection.readyState !== 0) {
     console.log("🔗 MongoDB already connected.");
+    return;
+  }
+
+  if(!cachedDbUri) {
+    const ssmClient = new SSMClient({region: "ap-southeast-2"});
+    const paramName = process.env.DB_PARAM_NAME;
+
+    if(!paramName) {
+      throw new Error("DB_PARAM_NAME is not set in environment variables.");
+    }
+
+    try {
+      console.log("🔍 Retrieving MongoDB URI from SSM...");
+      const command = new GetParameterCommand({
+        Name: paramName,
+        WithDecryption: true
+      })
+
+      const response = await ssmClient.send(command);
+      cachedDbUri = response.Parameter?.Value;
+      console.log('The cachedDbUri is %s', cachedDbUri);
+      
+      console.log("✅ Successfully retrieved DB URI from SSM.");      
+    } catch (error) {
+      console.error("❌ Failed to retrieve DB URI from SSM:", error);
+      throw new Error("Failed to retrieve DB URI from SSM");
+    }
+  }
+
+  try {
+    console.log("🌐 Attempting to connect to MongoDB...");
+    await mongoose.connect(cachedDbUri);
+    console.log("✅ MongoDB connected successfully!");
+  } catch (dbError) {
+    console.error("❌ MongoDB connection failed:", dbError);
+    throw new Error(`Database connection failed: ${dbError.message}`);
   }
 };
 

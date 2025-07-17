@@ -38,7 +38,7 @@ resource "aws_lambda_function" "emenu_server" {
     
   environment {
     variables = {
-      DB_HOST = var.db_host
+      DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name       //Pass the name of Parameter
     }
   }
 
@@ -60,11 +60,13 @@ resource "aws_lambda_function" "emenu_post_confirmation" {
   memory_size   = 128
 
   role = aws_iam_role.cognito_trigger.arn
+
   environment {
     variables = {
-      DB_HOST = var.db_host
+      DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name       //Pass the name of Parameter
     }
   }
+
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
 }
 
@@ -121,6 +123,7 @@ resource "aws_iam_role_policy_attachment" "cognito_lambda_execution" {
   role = aws_iam_role.cognito_trigger.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" 
 }
+
 // add the 'AdminAddUserToGroup' to cognito_trigger
 resource "aws_iam_role_policy" "cognito_admin_group_access" {
   name = "AllowCognitoAdminGroupAccess"
@@ -139,4 +142,58 @@ resource "aws_iam_role_policy" "cognito_admin_group_access" {
       }
     ]
   })
+}
+
+// Add the ssm getParameter previliedge for lambda_exec role of emenu_server
+resource "aws_iam_role_policy" "emenu_server_ssm_access" {
+  name = "emenu_server_ssm_access"
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath",          // Optional when need retrieve multi parameters under pathe
+        ],
+        Resource = aws_ssm_parameter.db_connect_string_param.arn
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:Decrypt"
+        ], 
+        Resource = "arn:aws:kms:ap-southeast-2:205930647566:key/9699535c-75c7-4ba3-96bb-2848475b1eda"
+      }
+    ]
+  }) 
+}
+
+resource "aws_iam_role_policy" "emenu_post_confirmation_ssm_access" {
+  name = "emenu_post_confirmation_ssm_access"
+  role = aws_iam_role.cognito_trigger.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath",          // Optional when need retrieve multi parameters under pathe
+          "kms:Decrypt"                       // Only useful for SecureString
+        ],
+               Resource = aws_ssm_parameter.db_connect_string_param.arn
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:Decrypt"
+        ], 
+        Resource = "arn:aws:kms:ap-southeast-2:205930647566:key/9699535c-75c7-4ba3-96bb-2848475b1eda"
+      }
+    ]
+  }) 
 }

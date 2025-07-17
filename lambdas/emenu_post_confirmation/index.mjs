@@ -2,27 +2,55 @@ import pkg from "@aws-sdk/client-cognito-identity-provider";
 const { CognitoIdentityProviderClient, AdminAddUserToGroupCommand } = pkg;
 import mongoose from 'mongoose';
 import User from "/opt/nodejs/models/user.js";
+import { SSMClient, GetParameterCommand} from "@aws-sdk/client-ssm";
 
 // Initialize AWS SDK client outside the handler to leverage Lambda warm starts.
 const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-2" });
 
-const DB_HOST = process.env.DB_HOST;
+let cachedDbUri = null;
 
-// Helper function to connect to the database, ensuring connection happens only once.
 const connectDb = async () => {
-    if (mongoose.connection.readyState === 0) {
-        try {
-        console.log("🌐 Attempting to connect to MongoDB...");
-        await mongoose.connect(DB_HOST);
-        console.log("✅ MongoDB connected successfully!");
-        } catch (dbError) {
-        console.error("❌ MongoDB connection failed:", dbError);
-        throw new Error(`Database connection failed: ${dbError.message}`);
-        }
-    } else {
-        console.log("🔗 MongoDB already connected.");
+  if (mongoose.connection.readyState !== 0) {
+    console.log("🔗 MongoDB already connected.");
+    return;
+  }
+
+  if(!cachedDbUri) {
+    const ssmClient = new SSMClient({region: "ap-southeast-2"});
+    const paramName = process.env.DB_PARAM_NAME;
+
+    if(!paramName) {
+      throw new Error("DB_PARAM_NAME is not set in environment variables.");
     }
+
+    try {
+      console.log("🔍 Retrieving MongoDB URI from SSM...");
+      const command = new GetParameterCommand({
+        Name: paramName,
+        WithDecryption: true
+      })
+
+      const response = await ssmClient.send(command);
+      cachedDbUri = response.Parameter?.Value;
+      console.log('The cachedDbUri is %s', cachedDbUri);
+      
+      console.log("✅ Successfully retrieved DB URI from SSM.");      
+    } catch (error) {
+      console.error("❌ Failed to retrieve DB URI from SSM:", error);
+      throw new Error("Failed to retrieve DB URI from SSM");
+    }
+  }
+
+  try {
+    console.log("🌐 Attempting to connect to MongoDB...");
+    await mongoose.connect(cachedDbUri);
+    console.log("✅ MongoDB connected successfully!");
+  } catch (dbError) {
+    console.error("❌ MongoDB connection failed:", dbError);
+    throw new Error(`Database connection failed: ${dbError.message}`);
+  }
 };
+
 
 export const handler = async (event) => {
     console.log("--- Post Confirmation Lambda Started ---");

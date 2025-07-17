@@ -1,8 +1,8 @@
-variable "db_host" {
-  description = "MongoDB connection string"
-  type        = string
-  sensitive   = true
+variable "environment" {
+  default = "dev"
+  type    = string
 }
+
 variable "aws_region" {
   default = "ap-southeast-2"
 }
