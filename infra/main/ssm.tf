@@ -1,4 +1,5 @@
 
+// This is for Parameter Store of System Manager
 resource "aws_ssm_parameter" "db_connect_string_param" {
     name = "/emenu/${var.environment}/db_connection_string"
     type = "SecureString"
