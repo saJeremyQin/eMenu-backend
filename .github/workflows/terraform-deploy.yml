@@ -90,7 +90,7 @@ jobs:
       - name: Request Manual Approval
         uses: trstringer/manual-approval@v1
         with:
-          secret: ${{ secrets.APPROVAL_TOKEN }}
+          secret: ${{ secrets.GITHUB_TOKEN }}
           approvers: saJeremyQin
           minimum-approvals: 1
           issue-title: "Manual approval required for Terraform Apply"
