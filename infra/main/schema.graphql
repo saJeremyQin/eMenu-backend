@@ -1,81 +1,173 @@
-# GraphQL Schema for eMenu
+# ====================================================================
+# ENUMS & UTILITIES
+# ====================================================================
+
+enum Role {
+  BOSS
+  WAITER
+}
+
 enum SubscriptionPlan {
   BASIC
   PREMIUM
 }
 
 enum OrderStatus {
-  ONGOING
-  CHECKOUT
+  PENDING
+  CONFIRMED # 已确认，正在制作
+  COMPLETED # 已完成/结账
+  CANCELLED
 }
 
-enum Role {
-  boss
-  waiter
-  demo
-  admin
-}
+# ====================================================================
+# CORE ENTITY TYPES (用于读取)
+# ====================================================================
 
+# 用户 Type (用于身份和权限管理)
 type User {
-  id: ID!              # save the sub of cognito user
+  id: ID! # Mongoose _id
+  cognitoId: String! # Cognito Sub ID
   email: String!
-  role: Role! 
-  restaurantId: ID
+  role: Role!
+  restaurantId: ID # 关联的餐厅 ID (Waiter 必有)
 }
 
+# 餐厅 Type (包含订阅和限额信息)
 type Restaurant {
-  id: ID!
+  id: ID! # Mongoose _id
+  bossId: String!
   name: String!
   image: String
   address: String
-  bossId: ID!
-  subscriptionPlan: SubscriptionPlan
-  subscriptionExpiry: AWSDateTime
+  subscriptionPlan: SubscriptionPlan!
+  subscriptionExpiry: String! # 到期日，ISO 格式，比如 "2025-12-31"
+
+  # 业务限额字段 (从 MongoDB 动态读取)
+  dishTypeLimit: Int!
+  dishLimit: Int!
+  waiterLimit: Int!
+
+  # 关联: 仅用于查询该餐厅下的服务员列表 (Resolver 反查)
+  waiters: [User]
 }
 
-type Dish {
-  id: ID!
-  name: String!
-  description: String
-  price: Int!
-  image: String!
-  dishTypeId: ID!
-  restaurantId: ID!
-  dishType: DishType                     #support nested query
-}
-
+# 菜品分类 Type
 type DishType {
-  id: ID!
-  title: String!
-  alias: String
-  restaurantId: ID
+  id: ID! # Mongoose _id
+  restaurantId: ID!
+  name: String!
+  alias: String # 别名/副标题
+  order: Int # 排序字段 (UI 控制)
+  isDeleted: Boolean! # 软删除标记
 }
+
+# 菜品详情 Type
+type Dish {
+  id: ID! # Mongoose _id
+  restaurantId: ID!
+  dishTypeId: ID! # 内部关联字段
+  name: String!
+  price: Float! # 使用 Float 存储价格
+  image: String
+  description: String
+  isAvailable: Boolean! # 是否在售 (App端控制)
+  isDeleted: Boolean! # 软删除标记
+  
+  # 嵌套: 允许前端在查询菜品时，一并获取其分类信息
+  dishType: DishType 
+}
+
+# 订单行项目 Type (嵌入在 Order 中)
+type OrderItem {
+  dishId: ID!
+  name: String! # 下单时的菜品名称 (历史快照)
+  price: Float! # 下单时的菜品价格 (历史快照)
+  quantity: Int!
+  notes: String
+}
+
+# 订单 Type
+type Order {
+  id: ID! # Mongoose _id
+  restaurantId: ID!
+  waiterId: ID! # 下单服务员的 User ID
+  tableNumber: String!
+  status: OrderStatus!
+  totalAmount: Float!
+  createdAt: String!
+  
+  # 嵌入列表: 订单包含的行项目
+  items: [OrderItem!] 
+}
+
+# ====================================================================
+# INPUT TYPES (用于写入/更新)
+# ====================================================================
+
+input RestaurantInput {
+  name: String!
+  image: String
+  address: String
+}
+
+input DishTypeInput {
+  name: String!
+  alias: String
+  order: Int
+}
+
+input DishInput {
+  dishTypeId: ID! # 必须指定分类
+  name: String!
+  price: Float!
+  image: String
+  description: String
+  isAvailable: Boolean # 默认为 true
+}
+
+input OrderItemInput {
+  dishId: ID!
+  quantity: Int!
+  notes: String
+}
+
+input OrderInput {
+  tableNumber: String!
+  items: [OrderItemInput!]!
+}
+
+# ====================================================================
+# ROOT OPERATIONS
+# ====================================================================
 
 type Query {
-  getRestaurant(id: ID!): Restaurant
-  getUser(id: ID!): User
-  listDishes: [Dish]
+  # 菜单查询 (Boss/Waiter)
+  getRestaurant: Restaurant
   listDishTypes: [DishType]
+  listDishes(dishTypeId: ID): [Dish]
+
+  # 订单查询
+  listOrders(status: OrderStatus, dateFrom: String, dateTo: String): [Order]
 }
 
 type Mutation {
-  createRestaurant(input: CreateRestaurantInput!): Restaurant
-  updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant
-}
+  # 餐厅与 Boss 管理
+  createRestaurant(input: RestaurantInput!): Restaurant
+  updateRestaurant(input: RestaurantInput!): Restaurant
+  inviteWaiter(email: String!): User 
 
-input CreateRestaurantInput {
-  name: String!
-  image: String
-  address: String
-}
+  # 菜单管理
+  createDishType(input: DishTypeInput!): DishType
+  updateDishType(id: ID!, input: DishTypeInput!): DishType
+  deleteDishType(id: ID!): DishType # 软删除，返回更新后的对象
+  
+  createDish(input: DishInput!): Dish
+  updateDish(id: ID!, input: DishInput!): Dish
+  deleteDish(id: ID!): Dish # 软删除，返回更新后的对象
+  updateDishAvailability(id: ID!, isAvailable: Boolean!): Dish
 
-input UpdateRestaurantInput {
-  name: String
-  image: String
-  address: String
-}
-
-schema {
-  query: Query
-  mutation: Mutation
+  # 订单操作
+  placeOrder(input: OrderInput!): Order
+  checkoutOrder(orderId: ID!): Order
+  updateOrderStatus(orderId: ID!, status: OrderStatus!): Order
 }
