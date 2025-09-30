@@ -1,39 +1,21 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  sub: {
-    type: String,
-    required: true,
-    unique: true,  // ensure it is unique, from cognito userSub
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  role: {
-    type: String,
-    enum: ['boss', 'waiter', 'demo','admin'],
-    required: true,
-  },
-  restaurantId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant',
-    required: false
-  },
-}, {
+const UserSchema = new mongoose.Schema({
+  cognitoId: { type: String, required: true },
+  email: { type: String, required: true },
+  role: { type: String, enum: ['BOSS', 'WAITER'], required: true },
+  restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant' }
+}, { 
   timestamps: true,
-    toJSON: {
-    virtuals: true,                 // add virtual field（id）
-    versionKey: false,              // remove __v field
-    transform: (_, ret) => {
-      ret.id = ret.sub;             // map _id -> id
-      delete ret._id;               // delete _id，avoid duplicate
-      delete ret.__v;
-    }
+  toJSON: {
+      virtuals: true,                   // add virtual field（id）
+      versionKey: false,                // 去掉 __v 字段
+      transform: (_, ret) => {
+          ret.id = ret._id.toString();  // 映射 _id -> id
+          delete ret._id;               // 删除 _id，避免重复
+      }
   }
-});
+ });
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
-
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 export default User;

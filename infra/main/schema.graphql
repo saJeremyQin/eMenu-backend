@@ -57,7 +57,7 @@ type DishType {
   restaurantId: ID!
   name: String!
   alias: String # 别名/副标题
-  order: Int # 排序字段 (UI 控制)
+  sortOrder: Int # 排序字段 (UI 控制)
   isDeleted: Boolean! # 软删除标记
 }
 
@@ -67,7 +67,7 @@ type Dish {
   restaurantId: ID!
   dishTypeId: ID! # 内部关联字段
   name: String!
-  price: Float! # 使用 Float 存储价格
+  price: Number! # 使用 Number 存储价格, by cents
   image: String
   description: String
   isAvailable: Boolean! # 是否在售 (App端控制)
@@ -81,7 +81,7 @@ type Dish {
 type OrderItem {
   dishId: ID!
   name: String! # 下单时的菜品名称 (历史快照)
-  price: Float! # 下单时的菜品价格 (历史快照)
+  price: Number! # 下单时的菜品价格 (历史快照)
   quantity: Int!
   notes: String
 }
@@ -93,7 +93,7 @@ type Order {
   waiterId: ID! # 下单服务员的 User ID
   tableNumber: String!
   status: OrderStatus!
-  totalAmount: Float!
+  totalAmount: Number!
   createdAt: String!
   
   # 嵌入列表: 订单包含的行项目
@@ -119,7 +119,7 @@ input DishTypeInput {
 input DishInput {
   dishTypeId: ID! # 必须指定分类
   name: String!
-  price: Float!
+  price: Number!
   image: String
   description: String
   isAvailable: Boolean # 默认为 true
