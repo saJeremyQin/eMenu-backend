@@ -35,7 +35,7 @@ type User {
 # 餐厅 Type (包含订阅和限额信息)
 type Restaurant {
   id: ID! # Mongoose _id
-  bossId: String!
+  bossId: ID!
   name: String!
   image: String
   address: String
@@ -67,7 +67,7 @@ type Dish {
   restaurantId: ID!
   dishTypeId: ID! # 内部关联字段
   name: String!
-  price: Number! # 使用 Number 存储价格, by cents
+  price: Int! # 使用 Number 存储价格, by cents
   image: String
   description: String
   isAvailable: Boolean! # 是否在售 (App端控制)
@@ -81,7 +81,7 @@ type Dish {
 type OrderItem {
   dishId: ID!
   name: String! # 下单时的菜品名称 (历史快照)
-  price: Number! # 下单时的菜品价格 (历史快照)
+  price: Int! # 下单时的菜品价格 (历史快照)
   quantity: Int!
   notes: String
 }
@@ -93,7 +93,7 @@ type Order {
   waiterId: ID! # 下单服务员的 User ID
   tableNumber: String!
   status: OrderStatus!
-  totalAmount: Number!
+  totalAmount: Int!
   createdAt: String!
   
   # 嵌入列表: 订单包含的行项目
@@ -113,13 +113,13 @@ input RestaurantInput {
 input DishTypeInput {
   name: String!
   alias: String
-  order: Int
+  sortOrder: Int
 }
 
 input DishInput {
   dishTypeId: ID! # 必须指定分类
   name: String!
-  price: Number!
+  price: Int!
   image: String
   description: String
   isAvailable: Boolean # 默认为 true
