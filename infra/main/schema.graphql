@@ -3,8 +3,8 @@
 # ====================================================================
 
 enum Role {
-  BOSS
-  WAITER
+  boss
+  waiter
 }
 
 enum SubscriptionPlan {
@@ -30,6 +30,7 @@ type User {
   email: String!
   role: Role!
   restaurantId: ID # 关联的餐厅 ID (Waiter 必有)
+  isDeleted: Boolean! # 软删除标记
 }
 
 # 餐厅 Type (包含订阅和限额信息)
