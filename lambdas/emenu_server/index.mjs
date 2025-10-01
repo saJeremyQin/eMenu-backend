@@ -50,19 +50,36 @@ const connectDb = async () => {
 };
 
 // Helper function to get restaurantId from user identity (re-used for multiple resolvers)
-const getRestaurantIdFromIdentity = async (identity) => {
-  if (!identity || !identity.sub) {
-    throw new Error("Authentication required: User identity is missing.");
-  }
-  const user = await User.findOne({ sub: identity.sub });
+// const getRestaurantIdFromIdentity = async (identity) => {
+//   if (!identity || !identity.sub) {
+//     throw new Error("Authentication required: User identity is missing.");
+//   }
+//   const user = await User.findOne({ sub: identity.sub });
+//   if (!user) {
+//     throw new Error("User not found.");
+//   }
+//   if (!user.restaurantId) {
+//     throw new Error("User is not associated with a restaurant.");
+//   }
+//   return user.restaurantId;
+// };
+async function getRestaurantIdFromIdentity(identity) {
+  const cognitoId = identity?.sub || identity?.claims?.sub;
+  console.log("DEBUG: cognitoId is", cognitoId);
+  console.log("DEBUG: mongoose connection is", mongoose.connection.name, mongoose.connection.host);
+  console.log("DEBUG: User collection is", User.collection.name);
+
+  if (!cognitoId) throw new Error("Cognito identity sub not found.");
+  const user = await User.findOne({ cognitoId });
   if (!user) {
+    // 打印所有用户，便于你排查
+    const count = await User.countDocuments();
+    const allUsers = await User.find().limit(5);
+    console.error("DEBUG: First 5 users in DB:", allUsers);
     throw new Error("User not found.");
   }
-  if (!user.restaurantId) {
-    throw new Error("User is not associated with a restaurant.");
-  }
   return user.restaurantId;
-};
+}
 
 
 export const handler = async (event, context) => {
@@ -92,7 +109,7 @@ export const handler = async (event, context) => {
       case "getUser":
         return await getUser(event.arguments, identity);
       case "listDishes":
-        return await listDishes(identity);
+        return await listDishes(event, context);
       case "createRestaurant":
         return await createRestaurant(event.arguments, identity);
       default:
@@ -143,21 +160,44 @@ const getUser = async (args, identity) => {
   }
 };
 
-const listDishes = async (identity) => {
-  console.log('Executing listDishes...');
+// const listDishes = async (identity) => {
+//   console.log('Executing listDishes...');
+//   const restaurantId = await getRestaurantIdFromIdentity(identity);
+//   console.log('The user\'s restaurantId is:', restaurantId);
+
+//   // Key change: Use populate to get DishType data
+//   const dishes = await Dish.find({ restaurantId: restaurantId }).populate('dishTypeId');          
+
+//   return dishes.map( d => {
+//     const dishObj = d.toJSON();
+//     dishObj.dishType = dishObj.dishTypeId;
+//     return dishObj;
+//   });
+//   // To Be updated 
+// };
+export async function listDishes(event, context) {
+  console.info("Executing listDishes...");
+  const identity = event.identity;
+  
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  console.log('The user\'s restaurantId is:', restaurantId);
+  console.log('restaurantId is %s', restaurantId);
+  
 
-  // Key change: Use populate to get DishType data
-  const dishes = await Dish.find({ restaurantId: restaurantId }).populate('dishTypeId');          
+  // 根据传入参数决定是否按分类过滤
+  const { dishTypeId } = event.arguments || {};
+  console.log('dishTypeId inside is $s', dishTypeId);
+  
+  const filter = { restaurantId };
+  if (dishTypeId) filter.dishTypeId = dishTypeId;
 
-  return dishes.map( d => {
+  const dishes = await Dish.find(filter).populate('dishTypeId');
+  
+  return dishes.map(d => {
     const dishObj = d.toJSON();
-    dishObj.dishType = dishObj.dishTypeId;
+    dishObj.dishType = dishObj.dishTypeId; // 兼容 GraphQL schema 的 dishType 字段
     return dishObj;
   });
-  // To Be updated 
-};
+}
 
 const createRestaurant = async (args, identity) => {
   console.log('Executing createRestaurant...');
