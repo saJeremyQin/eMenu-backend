@@ -7,7 +7,7 @@ const OrderSchema = new mongoose.Schema({
   status: { type: String, enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'], required: true },
   totalAmount: { type: Number, required: true, comment: 'by cents' }, // 单位分
   createdAt: { type: String, required: true },
-  orderItems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'OrderItem', required: true }]
+  items: [{ type: mongoose.Schema.Types.ObjectId, ref: 'OrderItem', required: true }] // 改名为 items
 }, {
   timestamps: true,
   toJSON: {

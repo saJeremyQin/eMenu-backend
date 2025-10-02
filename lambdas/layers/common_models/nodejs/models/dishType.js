@@ -18,5 +18,5 @@ const DishTypeSchema = new mongoose.Schema({
   }
 });
 
-const DishType = mongoose.models.DishType || mongoose.model('DishType', dishTypeSchema);
+const DishType = mongoose.models.DishType || mongoose.model('DishType', DishTypeSchema);
 export default DishType;

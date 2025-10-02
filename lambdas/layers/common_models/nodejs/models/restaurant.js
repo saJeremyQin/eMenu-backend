@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
 
 const RestaurantSchema = new mongoose.Schema({
-  bossId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  bossId: { type: String, required: true }, // 改为 String 类型存储 cognitoId
   name: { type: String, required: true },
   image: String,
   address: String,
-  subscriptionPlan: { type: String, enum: ['BASIC', 'PREMIUM'], required: true },
-  subscriptionExpiry: { type: String, required: true },
-  dishTypeLimit: { type: Number, required: true },
-  dishLimit: { type: Number, required: true },
-  waiterLimit: { type: Number, required: true },
+  subscriptionPlan: { type: String, enum: ['BASIC', 'PREMIUM'], required: true, default: 'BASIC' },
+  subscriptionExpiry: String, // 可为 null
+  dishTypeLimit: { type: Number, required: true, default: 3 },
+  dishLimit: { type: Number, required: true, default: 5 },
+  waiterLimit: { type: Number, required: true, default: 1 },
   waiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // User id数组
 }, { 
     timestamps: true,
