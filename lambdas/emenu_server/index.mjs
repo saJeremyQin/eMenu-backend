@@ -365,7 +365,14 @@ const getUser = async (args, identity) => {
       console.error(`User with cognitoId ${requestedCognitoId} not found.`);
       return null;
     }
-    return user.toJSON();
+   return {
+      id: user._id ? user._id.toString() : user.cognitoId,
+      cognitoId: user.cognitoId,
+      email: user.email,
+      role: user.role,
+      restaurantId: user.restaurantId ? user.restaurantId.toString() : null,
+      isDeleted: !!user.isDeleted,
+    };
   } catch (err) {
     console.error(`Error fetching user ${requestedCognitoId}:`, err);
     throw new Error(`Failed to fetch user: ${err.message}`);
