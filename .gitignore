@@ -4,3 +4,13 @@ terraform.tfstate
 terraform.tfstate.*
 
 node_modules/
+
+# Lambda function zip files (build artifacts)
+lambdas/emenu_server/appsync_main_handler.zip
+lambdas/emenu_post_confirmation/cognito_trigger.zip
+
+# Lambda layer zip files (build artifacts)
+lambdas/layers/common_models/common_models_layer.zip
+
+# All zip files in lambdas directory
+lambdas/**/*.zip
