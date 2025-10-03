@@ -1,6 +1,8 @@
 resource "aws_cognito_user_pool" "emenu_user_pool" {
     name              = "emenu-user-pool"
-    alias_attributes  = [ "email" ]
+    # alias_attributes  = [ "email" ]
+    username_attributes = ["email"] # 表示直接用 email 作为 username
+
     mfa_configuration = "OFF"
     auto_verified_attributes = [ "email" ]
 

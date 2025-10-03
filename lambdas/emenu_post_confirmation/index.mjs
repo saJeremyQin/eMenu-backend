@@ -72,7 +72,7 @@ export const handler = async (event) => {
 
     // Determine the user's initial role based on business logic
     let assignedRole = "waiter"; // Default role
-    const targetClientId = "40nv3qru4flrlbcjftgq7qd7q0";
+    const targetClientId = "4l90vqi7nfam318ci1tml91j3n";
 
       // 1. Add user to the 'boss' user group (based on clientId)
     if (event.callerContext && event.callerContext.clientId && event.callerContext.clientId === targetClientId) {
@@ -99,16 +99,17 @@ export const handler = async (event) => {
     // 2. Insert User record into MongoDB
     try {
         // Check if the user already exists (to prevent duplicate triggers or ensure idempotency)
-        const existingUser = await User.findOne({ sub: userSub });
+        const existingUser = await User.findOne({ cognitoId: userSub });
         if (!existingUser) {
             console.log(`Creating new user record for ${userEmail} in MongoDB with role: ${assignedRole}`);
             console.log(`the userSub is ${userSub}, email is ${userEmail}`);
             
             const newUser = new User({
-                sub: userSub,             // 将 userSub 赋值给 sub 字段
+                cognitoId: userSub,             // 将 userSub 赋值给 cognitoId 字段
                 email: userEmail,
                 role: assignedRole,
-                restaurantId: undefined 
+                restaurantId: undefined,
+                isDeleted: false 
             });
 
             await newUser.save();
@@ -116,7 +117,7 @@ export const handler = async (event) => {
         } else {
             console.log(`User record for ${userEmail} (sub: ${userSub}) already exists in MongoDB. Updating existing record.`);
             // Optional: If the user record exists, you might want to update its role or other attributes
-            await User.updateOne({ sub: userSub }, { $set: { role: assignedRole } });
+            await User.updateOne({ cognitoId: userSub }, { $set: { role: assignedRole } });
             console.log(`✅ User record for ${userEmail} updated in MongoDB.`);
         }
     } catch (error) {
