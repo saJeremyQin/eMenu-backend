@@ -252,6 +252,49 @@ resource "aws_appsync_resolver" "update_order_status_mutation" {
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
+// ==================================================================
+// RESTAURANT MANAGEMENT RESOLVERS
+// ==================================================================
+
+// Add resolver for updateRestaurantInfo mutation
+resource "aws_appsync_resolver" "update_restaurant_info_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "updateRestaurantInfo"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/updateRestaurantInfo-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
+// Add resolver for updateRestaurantSubscriptionPlan mutation
+resource "aws_appsync_resolver" "update_restaurant_subscription_plan_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "updateRestaurantSubscriptionPlan"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/updateRestaurantSubscriptionPlan-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
+// Add resolver for inviteWaiter mutation
+resource "aws_appsync_resolver" "invite_waiter_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "inviteWaiter"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/inviteWaiter-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
 // Create a role for AppSync to invoke lambda
 resource "aws_iam_role" "appsync_lambda_role" {
     name = "appsync-lambda-invoke-role"

@@ -111,6 +111,18 @@ input RestaurantInput {
   address: String
 }
 
+input RestaurantInfoInput {
+  name: String
+  image: String
+  address: String
+}
+
+input SubscriptionUpgradeInput {
+  subscriptionPlan: SubscriptionPlan!
+  subscriptionExpiry: String! # 到期日期
+  paymentTransactionId: String # 支付交易ID，用于记录
+}
+
 input DishTypeInput {
   name: String!
   alias: String
@@ -154,8 +166,9 @@ type Query {
 
 type Mutation {
   # 餐厅与 Boss 管理
-  createRestaurant(input: RestaurantInput!): Restaurant
-  updateRestaurant(input: RestaurantInput!): Restaurant
+  createRestaurant(input: RestaurantInput!): Restaurant # 仅创建 BASIC 版本
+  updateRestaurantInfo(input: RestaurantInfoInput!): Restaurant # 更新餐厅基本信息
+  updateRestaurantSubscriptionPlan(input: SubscriptionUpgradeInput!): Restaurant # 订阅升级
   inviteWaiter(email: String!): User 
 
   # 菜单管理

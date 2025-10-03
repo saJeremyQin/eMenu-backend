@@ -7,6 +7,24 @@ import Order from '/opt/nodejs/models/order.js';
 import OrderItem from '/opt/nodejs/models/orderItem.js';
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
+// ====================================================================
+// SUBSCRIPTION PLAN LIMITS CONSTANTS
+// ====================================================================
+const SUBSCRIPTION_LIMITS = {
+  BASIC: {
+    restaurants: 1,
+    dishTypes: 2,
+    dishes: 10,
+    waiters: 2
+  },
+  PREMIUM: {
+    restaurants: 1,
+    dishTypes: 20,
+    dishes: 200,
+    waiters: 20
+  }
+};
+
 let cachedDbUri = null;
 
 const connectDb = async () => {
@@ -68,6 +86,68 @@ async function getRestaurantIdFromIdentity(identity) {
   return user.restaurantId;
 }
 
+// ====================================================================
+// SUBSCRIPTION LIMIT HELPER FUNCTIONS
+// ====================================================================
+
+// 检查菜品分类限额
+async function checkDishTypeLimit(restaurantId) {
+  const restaurant = await Restaurant.findById(restaurantId);
+  if (!restaurant) throw new Error('Restaurant not found');
+  
+  const currentCount = await DishType.countDocuments({ 
+    restaurantId: restaurantId, 
+    isDeleted: false 
+  });
+  
+  const limit = SUBSCRIPTION_LIMITS[restaurant.subscriptionPlan].dishTypes;
+  
+  if (currentCount >= limit) {
+    throw new Error(`已达到${restaurant.subscriptionPlan}版本菜品分类数量限制（${limit}个）`);
+  }
+  
+  return { currentCount, limit, remaining: limit - currentCount };
+}
+
+// 检查菜品限额
+async function checkDishLimit(restaurantId) {
+  const restaurant = await Restaurant.findById(restaurantId);
+  if (!restaurant) throw new Error('Restaurant not found');
+  
+  const currentCount = await Dish.countDocuments({ 
+    restaurantId: restaurantId, 
+    isDeleted: false 
+  });
+  
+  const limit = SUBSCRIPTION_LIMITS[restaurant.subscriptionPlan].dishes;
+  
+  if (currentCount >= limit) {
+    throw new Error(`已达到${restaurant.subscriptionPlan}版本菜品数量限制（${limit}个）`);
+  }
+  
+  return { currentCount, limit, remaining: limit - currentCount };
+}
+
+// 检查服务员限额
+async function checkWaiterLimit(restaurantId) {
+  const restaurant = await Restaurant.findById(restaurantId);
+  if (!restaurant) throw new Error('Restaurant not found');
+  
+  const currentCount = await User.countDocuments({ 
+    restaurantId: restaurantId, 
+    role: 'waiter',
+    isDeleted: false 
+  });
+  
+  const limit = SUBSCRIPTION_LIMITS[restaurant.subscriptionPlan].waiters;
+  
+  if (currentCount >= limit) {
+    throw new Error(`已达到${restaurant.subscriptionPlan}版本服务员数量限制（${limit}个）`);
+  }
+  
+  return { currentCount, limit, remaining: limit - currentCount };
+}
+
 // Handler入口
 export const handler = async (event, context) => {
   try {
@@ -98,6 +178,12 @@ export const handler = async (event, context) => {
         return await listOrders(event, identity);
       case "createRestaurant":
         return await createRestaurant(event.arguments, identity);
+      case "updateRestaurantInfo":
+        return await updateRestaurantInfo(event.arguments, identity);
+      case "updateRestaurantSubscriptionPlan":
+        return await updateRestaurantSubscriptionPlan(event.arguments, identity);
+      case "inviteWaiter":
+        return await inviteWaiter(event.arguments, identity);
       case "createDishType":
         return await createDishType(event.arguments, identity);
       case "updateDishType":
@@ -280,7 +366,7 @@ const listOrders = async (event, identity) => {
 // MUTATION RESOLVERS
 // ====================================================================
 
-// 创建餐厅
+// 创建餐厅 - 固定为 BASIC 版本
 const createRestaurant = async (args, identity) => {
   console.log('Executing createRestaurant...');
   const cognitoId = identity.sub;
@@ -312,13 +398,18 @@ const createRestaurant = async (args, identity) => {
     throw new Error('Restaurant name and address are required.');
   }
 
+  // 创建餐厅 - 固定为 BASIC 套餐
+  const basicLimits = SUBSCRIPTION_LIMITS.BASIC;
   const restaurant = new Restaurant({
     name: input.name,
     image: input.image || null,
     address: input.address || null,
     bossId: cognitoId,
-    subscriptionPlan: input.subscriptionPlan || "BASIC",
-    subscriptionExpiry: input.subscriptionExpiry || null,
+    subscriptionPlan: "BASIC", // 固定为 BASIC
+    subscriptionExpiry: null, // BASIC 版本无到期时间
+    dishTypeLimit: basicLimits.dishTypes,
+    dishLimit: basicLimits.dishes,
+    waiterLimit: basicLimits.waiters
   });
 
   try {
@@ -336,6 +427,174 @@ const createRestaurant = async (args, identity) => {
   }
 };
 
+// 更新餐厅基本信息
+const updateRestaurantInfo = async (args, identity) => {
+  console.log('Executing updateRestaurantInfo...');
+  const restaurantId = await getRestaurantIdFromIdentity(identity);
+  const input = args.input;
+  
+  if (!restaurantId) {
+    throw new Error('Restaurant not found for this user');
+  }
+
+  // 构建更新数据
+  const updateData = {};
+  if (input.name !== undefined) updateData.name = input.name;
+  if (input.image !== undefined) updateData.image = input.image;
+  if (input.address !== undefined) updateData.address = input.address;
+  updateData.updatedAt = new Date();
+
+  try {
+    const updatedRestaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      updateData,
+      { new: true }
+    );
+
+    if (!updatedRestaurant) {
+      throw new Error('Restaurant not found');
+    }
+
+    const resultObject = updatedRestaurant.toObject();
+    resultObject.id = resultObject._id.toString();
+    console.log('Restaurant info updated successfully:', JSON.stringify(resultObject, null, 2));
+    return resultObject;
+  } catch (error) {
+    console.error('Error updating restaurant info:', error);
+    throw error;
+  }
+};
+
+// 更新餐厅订阅计划
+const updateRestaurantSubscriptionPlan = async (args, identity) => {
+  console.log('Executing updateRestaurantSubscriptionPlan...');
+  const restaurantId = await getRestaurantIdFromIdentity(identity);
+  const input = args.input;
+  
+  if (!restaurantId) {
+    throw new Error('Restaurant not found for this user');
+  }
+
+  // 验证订阅计划
+  if (!['BASIC', 'PREMIUM'].includes(input.subscriptionPlan)) {
+    throw new Error('Invalid subscription plan');
+  }
+
+  // 设置限额基于订阅计划
+  const planLimits = SUBSCRIPTION_LIMITS[input.subscriptionPlan];
+  if (!planLimits) {
+    throw new Error('Invalid subscription plan');
+  }
+  
+  const limits = {
+    dishTypeLimit: planLimits.dishTypes,
+    dishLimit: planLimits.dishes,
+    waiterLimit: planLimits.waiters
+  };
+
+  try {
+    const updatedRestaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      {
+        subscriptionPlan: input.subscriptionPlan,
+        subscriptionExpiry: input.subscriptionExpiry,
+        ...limits,
+        updatedAt: new Date()
+      },
+      { new: true }
+    );
+
+    if (!updatedRestaurant) {
+      throw new Error('Restaurant not found');
+    }
+
+    // 记录支付交易（这里可以扩展记录到单独的支付表）
+    if (input.paymentTransactionId) {
+      console.log('Payment transaction recorded:', input.paymentTransactionId);
+    }
+
+    const resultObject = updatedRestaurant.toObject();
+    resultObject.id = resultObject._id.toString();
+    console.log('Restaurant subscription updated successfully:', JSON.stringify(resultObject, null, 2));
+    return resultObject;
+  } catch (error) {
+    console.error('Error updating restaurant subscription plan:', error);
+    throw error;
+  }
+};
+
+// 邀请服务员
+const inviteWaiter = async (args, identity) => {
+  console.log('Executing inviteWaiter...');
+  const cognitoId = identity.sub;
+  const groups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
+  
+  if (!groups.includes("boss")) {
+    throw new Error("Only boss users can invite waiters");
+  }
+
+  // 获取 boss 的餐厅
+  const restaurant = await Restaurant.findOne({ bossId: cognitoId });
+  if (!restaurant) {
+    throw new Error('Restaurant not found for this boss');
+  }
+
+  // 检查服务员数量限额
+  await checkWaiterLimit(restaurant._id);
+
+  const { email } = args;
+  if (!email) {
+    throw new Error('Email is required to invite a waiter');
+  }
+
+  try {
+    // 检查用户是否已存在
+    const existingUser = await User.findOne({ email });
+    
+    if (existingUser) {
+      // 如果用户存在但被删除，可以重新激活
+      if (existingUser.isDeleted) {
+        const reactivatedUser = await User.findByIdAndUpdate(
+          existingUser._id,
+          {
+            isDeleted: false,
+            role: 'waiter',
+            restaurantId: restaurant._id,
+            updatedAt: new Date()
+          },
+          { new: true }
+        );
+        
+        console.log('Waiter reactivated successfully:', reactivatedUser._id);
+        return reactivatedUser.toJSON();
+      } else {
+        throw new Error('User with this email already exists and is active');
+      }
+    }
+
+    // 创建新的服务员用户（注意：这里假设用户会通过 Cognito 注册流程）
+    // 在实际应用中，您可能需要发送邀请邮件让用户完成注册
+    const newWaiter = new User({
+      email: email,
+      cognitoId: null, // 将在用户注册时更新
+      role: 'waiter',
+      restaurantId: restaurant._id,
+      isDeleted: false
+    });
+
+    const savedWaiter = await newWaiter.save();
+    console.log('Waiter invited successfully:', savedWaiter._id);
+    
+    // TODO: 这里应该发送邀请邮件给服务员
+    console.log('TODO: Send invitation email to:', email);
+    
+    return savedWaiter.toJSON();
+  } catch (error) {
+    console.error('Error inviting waiter:', error);
+    throw error;
+  }
+};
+
 // ====================================================================
 // DISH TYPE MUTATIONS
 // ====================================================================
@@ -349,6 +608,9 @@ const createDishType = async (args, identity) => {
   if (!input.name) {
     throw new Error('Dish type name is required.');
   }
+  
+  // 检查菜品分类数量限额
+  await checkDishTypeLimit(restaurantId);
   
   try {
     // 检查同名分类是否已存在
@@ -371,6 +633,7 @@ const createDishType = async (args, identity) => {
     });
     
     const savedDishType = await dishType.save();
+    console.log('DishType created successfully:', savedDishType._id);
     return savedDishType.toJSON();
   } catch (err) {
     console.error(`Error creating dish type:`, err);
@@ -471,6 +734,9 @@ const createDish = async (args, identity) => {
   if (!input.name || !input.dishTypeId || input.price == null) {
     throw new Error('Dish name, dish type, and price are required.');
   }
+  
+  // 检查菜品数量限额
+  await checkDishLimit(restaurantId);
   
   try {
     // 验证 dishTypeId 是否存在且属于当前餐厅
