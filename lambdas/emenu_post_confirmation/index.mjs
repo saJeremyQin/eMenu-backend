@@ -98,8 +98,14 @@ export const handler = async (event) => {
 
     // 2. Insert User record into MongoDB
     try {
-        // Check if the user already exists (to prevent duplicate triggers or ensure idempotency)
-        const existingUser = await User.findOne({ cognitoId: userSub });
+        // Check if the user already exists (by cognitoId or email to handle migration cases)
+        const existingUser = await User.findOne({ 
+            $or: [
+                { cognitoId: userSub },
+                { email: userEmail }
+            ]
+        });
+        
         if (!existingUser) {
             console.log(`Creating new user record for ${userEmail} in MongoDB with role: ${assignedRole}`);
             console.log(`the userSub is ${userSub}, email is ${userEmail}`);
@@ -116,12 +122,36 @@ export const handler = async (event) => {
             console.log(`✅ Successfully created user record in MongoDB for ${userEmail}`);
         } else {
             console.log(`User record for ${userEmail} (sub: ${userSub}) already exists in MongoDB. Updating existing record.`);
-            // Optional: If the user record exists, you might want to update its role or other attributes
-            await User.updateOne({ cognitoId: userSub }, { $set: { role: assignedRole } });
+            // Update the existing user record with the correct cognitoId if needed
+            const updateData = { 
+                role: assignedRole,
+                cognitoId: userSub,  // Ensure cognitoId is set correctly
+                email: userEmail     // Ensure email is up to date
+            };
+            
+            await User.updateOne({ _id: existingUser._id }, { $set: updateData });
             console.log(`✅ User record for ${userEmail} updated in MongoDB.`);
         }
     } catch (error) {
         console.error("❌ Error creating/updating user record in MongoDB:", error);
+        
+        // If it's a duplicate key error related to sub field, try to handle it
+        if (error.code === 11000 && error.keyPattern && error.keyPattern.sub) {
+            console.log("🔄 Attempting to handle duplicate sub key error...");
+            try {
+                // Try to find and update existing record with null sub
+                const existingNullSubUser = await User.findOne({ email: userEmail });
+                if (existingNullSubUser) {
+                    await User.updateOne(
+                        { _id: existingNullSubUser._id }, 
+                        { $set: { cognitoId: userSub, role: assignedRole } }
+                    );
+                    console.log(`✅ Updated existing user record for ${userEmail} with cognitoId`);
+                }
+            } catch (updateError) {
+                console.error("❌ Failed to handle duplicate key error:", updateError);
+            }
+        }
     }
     console.log("--- Post Confirmation Lambda Ended ---");
     return event; // Post Confirmation trigger Lambdas must return the original event object
