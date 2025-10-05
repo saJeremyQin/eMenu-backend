@@ -414,6 +414,21 @@ const createRestaurant = async (args, identity) => {
 
   try {
     const savedRestaurant = await restaurant.save();
+    
+    // 更新用户记录，设置 restaurantId
+    try {
+      await User.findOneAndUpdate(
+        { cognitoId: cognitoId },
+        { $set: { restaurantId: savedRestaurant._id } },
+        { new: true }
+      );
+      console.log('✅ Successfully updated user with restaurantId:', savedRestaurant._id);
+    } catch (userUpdateError) {
+      console.error('❌ Error updating user with restaurantId:', userUpdateError);
+      // 注意：即使用户更新失败，餐厅已经创建成功，所以我们仍然返回餐厅信息
+      // 在生产环境中，你可能需要考虑回滚餐厅创建或者记录这个错误以便后续处理
+    }
+    
     const resultObject = savedRestaurant.toObject();
     resultObject.id = resultObject._id.toString();
     console.log('Final object to be returned to AppSync:', JSON.stringify(resultObject, null, 2));
