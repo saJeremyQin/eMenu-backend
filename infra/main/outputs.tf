@@ -42,3 +42,19 @@ output "image_processor_function_name" {
   description = "Name of the image processor Lambda function"
   value       = aws_lambda_function.image_processor.function_name
 }
+
+# Additional outputs for remote state integration
+output "image_processor_function_arn" {
+  description = "ARN of the image processor Lambda function"
+  value       = aws_lambda_function.image_processor.arn
+}
+
+output "presigned_url_generator_function_arn" {
+  description = "ARN of the presigned URL generator Lambda function"
+  value       = aws_lambda_function.presigned_url_generator.arn
+}
+
+output "restaurant_assets_bucket_arn" {
+  description = "ARN of the S3 bucket for restaurant assets"
+  value       = aws_s3_bucket.restaurant_assets.arn
+}

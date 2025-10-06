@@ -297,16 +297,3 @@ resource "aws_s3_bucket_notification" "image_upload_notification" {
 
   depends_on = [aws_lambda_permission.allow_s3_invoke]
 }
-
-# Store bucket name in SSM for application access
-resource "aws_ssm_parameter" "s3_bucket_name" {
-  name        = "/emenu-admin/${var.environment}/s3_bucket_name"
-  description = "S3 Bucket name for restaurant assets"
-  type        = "String"
-  value       = aws_s3_bucket.restaurant_assets.bucket
-  overwrite   = true
-
-  tags = {
-    Environment = var.environment
-  }
-}
