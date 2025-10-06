@@ -129,7 +129,7 @@ resource "aws_iam_role_policy" "image_processor_policy" {
 }
 
 resource "aws_lambda_function" "image_processor" {
-  s3_bucket        = aws_s3_bucket.lambda_artifacts.bucket
+  s3_bucket        = data.aws_s3_bucket.lambda_code.bucket
   s3_key          = aws_s3_object.image_processor_zip.key
   function_name   = "emenu-image-processor-${var.environment}"
   role           = aws_iam_role.image_processor_role.arn
@@ -141,7 +141,6 @@ resource "aws_lambda_function" "image_processor" {
   environment {
     variables = {
       S3_BUCKET = aws_s3_bucket.restaurant_assets.bucket
-      AWS_REGION = var.aws_region
     }
   }
 
@@ -153,7 +152,7 @@ resource "aws_lambda_function" "image_processor" {
 
 # S3 object for image processor
 resource "aws_s3_object" "image_processor_zip" {
-  bucket = aws_s3_bucket.lambda_artifacts.bucket
+  bucket = data.aws_s3_bucket.lambda_code.bucket
   key    = "image_processor.zip"
   source = "${path.root}/../../lambdas/image_processor/image_processor.zip"
   etag   = filemd5("${path.root}/../../lambdas/image_processor/image_processor.zip")
@@ -167,7 +166,7 @@ resource "aws_cloudwatch_log_group" "image_processor_logs" {
 
 # Presigned URL Generator Lambda Function
 resource "aws_lambda_function" "presigned_url_generator" {
-  s3_bucket        = aws_s3_bucket.lambda_artifacts.bucket
+  s3_bucket        = data.aws_s3_bucket.lambda_code.bucket
   s3_key          = aws_s3_object.presigned_url_generator_zip.key
   function_name   = "emenu-presigned-url-generator-${var.environment}"
   role           = aws_iam_role.presigned_url_role.arn
@@ -178,7 +177,6 @@ resource "aws_lambda_function" "presigned_url_generator" {
   environment {
     variables = {
       S3_BUCKET = aws_s3_bucket.restaurant_assets.bucket
-      AWS_REGION = var.aws_region
     }
   }
 
@@ -190,7 +188,7 @@ resource "aws_lambda_function" "presigned_url_generator" {
 
 # S3 object for presigned URL generator
 resource "aws_s3_object" "presigned_url_generator_zip" {
-  bucket = aws_s3_bucket.lambda_artifacts.bucket
+  bucket = data.aws_s3_bucket.lambda_code.bucket
   key    = "presigned_url_generator.zip"
   source = "${path.root}/../../lambdas/presigned_url_generator/presigned_url_generator.zip"
   etag   = filemd5("${path.root}/../../lambdas/presigned_url_generator/presigned_url_generator.zip")
