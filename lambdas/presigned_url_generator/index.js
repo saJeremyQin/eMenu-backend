@@ -6,8 +6,25 @@ import { randomUUID } from 'crypto';
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 const BUCKET_NAME = process.env.S3_BUCKET;
 
+// 统一的 CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Amz-Date, X-Amz-User-Agent, X-Amz-Content-Sha256',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Max-Age': '86400'
+};
+
 export const handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
+
+  // 处理 OPTIONS 预检请求
+  if (event.requestContext?.http?.method === 'OPTIONS' || event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
 
   // 处理不同的事件格式（Lambda URL vs API Gateway）
   let body;
@@ -29,11 +46,7 @@ export const handler = async (event) => {
     if (!authToken || !fileName) {
       return {
         statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           error: 'Missing authToken or fileName'
         })
@@ -46,13 +59,9 @@ export const handler = async (event) => {
     if (!decodedToken || !decodedToken.sub) {
       return {
         statusCode: 401,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
-          error: 'Invalid or expired token'
+          error: 'Invalid or missing authentication token'
         })
       };
     }
@@ -90,11 +99,7 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         presignedUrl,
         s3Key,
@@ -108,11 +113,7 @@ export const handler = async (event) => {
     
     return {
       statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         error: 'Internal server error'
       })

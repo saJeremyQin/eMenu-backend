@@ -209,7 +209,12 @@ resource "aws_lambda_function_url" "presigned_url_generator" {
     allow_credentials = false
     allow_origins     = ["*"]
     allow_methods     = ["POST"]
-    allow_headers     = ["date", "keep-alive", "content-type", "authorization"]
+    allow_headers     = [
+      "authorization",
+      "content-type", 
+      "date",
+      "keep-alive"
+    ]
     expose_headers    = ["date", "keep-alive"]
     max_age          = 86400
   }
