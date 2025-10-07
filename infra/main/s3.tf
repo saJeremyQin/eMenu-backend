@@ -208,7 +208,7 @@ resource "aws_lambda_function_url" "presigned_url_generator" {
   cors {
     allow_credentials = false
     allow_origins     = ["*"]
-    allow_methods     = ["POST"]
+    allow_methods     = ["GET", "POST", "PUT", "DELETE", "HEAD", "PATCH"]
     allow_headers     = [
       "authorization",
       "content-type", 

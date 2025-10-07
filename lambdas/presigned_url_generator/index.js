@@ -6,14 +6,6 @@ import { randomUUID } from 'crypto';
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 const BUCKET_NAME = process.env.S3_BUCKET;
 
-// 统一的 CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Amz-Date, X-Amz-User-Agent, X-Amz-Content-Sha256',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Max-Age': '86400'
-};
-
 export const handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
 
@@ -21,7 +13,6 @@ export const handler = async (event) => {
   if (event.requestContext?.http?.method === 'OPTIONS' || event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: corsHeaders,
       body: ''
     };
   }
@@ -46,7 +37,6 @@ export const handler = async (event) => {
     if (!authToken || !fileName) {
       return {
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({
           error: 'Missing authToken or fileName'
         })
@@ -59,7 +49,6 @@ export const handler = async (event) => {
     if (!decodedToken || !decodedToken.sub) {
       return {
         statusCode: 401,
-        headers: corsHeaders,
         body: JSON.stringify({
           error: 'Invalid or missing authentication token'
         })
@@ -99,7 +88,6 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({
         presignedUrl,
         s3Key,
@@ -113,7 +101,6 @@ export const handler = async (event) => {
     
     return {
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({
         error: 'Internal server error'
       })
