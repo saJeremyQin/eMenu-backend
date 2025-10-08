@@ -35,6 +35,7 @@ export const handler = async (event) => {
 
     // 验证必需参数
     if (!authToken || !fileName) {
+      console.log('Missing parameters:', { authToken: !!authToken, fileName: !!fileName });
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -43,10 +44,21 @@ export const handler = async (event) => {
       };
     }
 
+    console.log('Received authToken length:', authToken.length);
+    console.log('AuthToken starts with:', authToken.substring(0, 20) + '...');
+
     // 从 Cognito JWT 中提取用户信息
     // 注意：在生产环境中，你应该验证 JWT 签名
     const decodedToken = jwt.decode(authToken);
+    console.log('Decoded token:', decodedToken ? 'Success' : 'Failed');
+    if (decodedToken) {
+      console.log('Token issuer:', decodedToken.iss);
+      console.log('Token subject:', decodedToken.sub);
+      console.log('Token audience:', decodedToken.aud);
+    }
+    
     if (!decodedToken || !decodedToken.sub) {
+      console.log('Token validation failed');
       return {
         statusCode: 401,
         body: JSON.stringify({
