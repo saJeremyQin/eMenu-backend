@@ -156,38 +156,28 @@ jobs:
         run: |
           echo "📤 Uploading Lambda packages to S3..."
           
-          # 函数：检查文件是否需要上传（仅上传实际打包的文件）
-          check_and_upload() {
+          # 函数：直接上传文件（因为我们已经基于源代码变化决定了要打包什么）
+          upload_if_exists() {
             local local_file=$1
             local s3_path=$2
             local name=$3
             
             if [ -f "$local_file" ]; then
-              local_hash=$(md5sum "$local_file" | cut -d' ' -f1)
-              
-              # 获取S3中的文件hash（如果存在）
-              s3_hash=$(aws s3api head-object --bucket emenu-lambda-code-bucket --key "$s3_path" --query 'Metadata.md5hash' --output text 2>/dev/null || echo "null")
-              
-              if [ "$local_hash" != "$s3_hash" ]; then
-                echo "🔄 Uploading $name (hash changed: $s3_hash -> $local_hash)"
-                aws s3 cp "$local_file" "s3://emenu-lambda-code-bucket/$s3_path" \
-                  --metadata "md5hash=$local_hash"
-              else
-                echo "✅ $name unchanged, skipping upload"
-              fi
+              echo "🔄 Uploading $name (packaged due to code changes)"
+              aws s3 cp "$local_file" "s3://emenu-lambda-code-bucket/$s3_path"
             else
               echo "⏭️ Skipping $name (not packaged in this run)"
             fi
           }
           
-          # 上传 Lambda 函数包（只上传实际打包的文件）
-          check_and_upload "lambdas/emenu_server/emenu_server.zip" "lambdas/emenu_server/emenu_server.zip" "emenu_server"
-          check_and_upload "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "emenu_post_confirmation"
-          check_and_upload "lambdas/image_processor/image_processor.zip" "lambdas/image_processor/image_processor.zip" "image_processor"
-          check_and_upload "lambdas/presigned_url_generator/presigned_url_generator.zip" "lambdas/presigned_url_generator/presigned_url_generator.zip" "presigned_url_generator"
+          # 上传 Lambda 函数包（直接上传所有打包的文件）
+          upload_if_exists "lambdas/emenu_server/emenu_server.zip" "lambdas/emenu_server/emenu_server.zip" "emenu_server"
+          upload_if_exists "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "emenu_post_confirmation"
+          upload_if_exists "lambdas/image_processor/image_processor.zip" "lambdas/image_processor/image_processor.zip" "image_processor"
+          upload_if_exists "lambdas/presigned_url_generator/presigned_url_generator.zip" "lambdas/presigned_url_generator/presigned_url_generator.zip" "presigned_url_generator"
           
-          # 上传 Lambda layer（只上传实际打包的文件）
-          check_and_upload "lambdas/layers/common_models/common_models_layer.zip" "layers/common_models/common_models_layer.zip" "common_models_layer"
+          # 上传 Lambda layer（直接上传所有打包的文件）
+          upload_if_exists "lambdas/layers/common_models/common_models_layer.zip" "layers/common_models/common_models_layer.zip" "common_models_layer"
           
           echo "✅ Upload process completed"
 
