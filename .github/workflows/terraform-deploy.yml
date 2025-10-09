@@ -3,9 +3,10 @@ name: Terraform Deploy
 on:
   push:
     branches:
-      - dev
+      - restaurantmanage  # 改为监听当前分支
     paths:
       - "infra/main/**"
+      - "lambdas/**"      # 监听所有Lambda代码变更
 
 permissions:
   issues: write       # 给 manual-approval 用
@@ -20,6 +21,89 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      # Lambda打包步骤
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Package Lambda Functions
+        run: |
+          echo "📦 Starting Lambda function packaging..."
+          
+          # 打包 emenu_server
+          echo "📦 Packaging emenu_server..."
+          cd lambdas/emenu_server
+          npm ci --production --silent
+          zip -r emenu_server.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+          cd ../..
+          
+          # 打包 emenu_post_confirmation  
+          echo "📦 Packaging emenu_post_confirmation..."
+          cd lambdas/emenu_post_confirmation
+          npm ci --production --silent
+          zip -r emenu_post_confirmation.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+          cd ../..
+          
+          # 打包 image_processor
+          echo "📦 Packaging image_processor..."
+          cd lambdas/image_processor
+          npm ci --production --silent
+          zip -r image_processor.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log" "build-*" "Dockerfile*"
+          cd ../..
+          
+          # 打包 presigned_url_generator
+          echo "📦 Packaging presigned_url_generator..."
+          cd lambdas/presigned_url_generator
+          npm ci --production --silent
+          zip -r presigned_url_generator.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+          cd ../..
+          
+          # 打包 common_models layer
+          echo "📦 Packaging common_models layer..."
+          cd lambdas/layers/common_models
+          npm ci --production --silent
+          zip -r common_models_layer.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+          cd ../../..
+          
+          # 验证打包结果
+          echo "✅ Lambda packages created:"
+          ls -la lambdas/*/
+          ls -la lambdas/*/**.zip
+          ls -la lambdas/layers/*/*.zip
+          echo "📊 Package sizes:"
+          find lambdas/ -name "*.zip" -exec du -h {} \;
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-2
+
+      - name: Upload Lambda Packages to S3
+        run: |
+          echo "📤 Uploading Lambda packages to S3..."
+          
+          # 上传 Lambda 函数包
+          aws s3 cp lambdas/emenu_server/emenu_server.zip \
+            s3://emenu-lambda-code-bucket/lambdas/emenu_server/emenu_server.zip
+          
+          aws s3 cp lambdas/emenu_post_confirmation/emenu_post_confirmation.zip \
+            s3://emenu-lambda-code-bucket/lambdas/emenu_post_confirmation/emenu_post_confirmation.zip
+          
+          aws s3 cp lambdas/image_processor/image_processor.zip \
+            s3://emenu-lambda-code-bucket/lambdas/image_processor/image_processor.zip
+          
+          aws s3 cp lambdas/presigned_url_generator/presigned_url_generator.zip \
+            s3://emenu-lambda-code-bucket/lambdas/presigned_url_generator/presigned_url_generator.zip
+          
+          # 上传 Lambda layer
+          aws s3 cp lambdas/layers/common_models/common_models_layer.zip \
+            s3://emenu-lambda-code-bucket/layers/common_models/common_models_layer.zip
+          
+          echo "✅ All packages uploaded to S3"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2

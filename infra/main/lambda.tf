@@ -29,7 +29,7 @@ resource "aws_lambda_layer_version" "common_mongoose_models" {
 resource "aws_lambda_function" "emenu_server" {
   function_name = "emenu-server"
   s3_bucket     = data.aws_s3_bucket.lambda_code.id
-  s3_key        = "lambdas/emenu_server/appsync_main_handler.zip"
+  s3_key        = "lambdas/emenu_server/emenu_server.zip"
   handler       = "index.handler"
   runtime       = "nodejs20.x"
   role          = aws_iam_role.lambda_exec.arn
@@ -52,7 +52,7 @@ resource "aws_lambda_function" "emenu_server" {
 resource "aws_lambda_function" "emenu_post_confirmation" {
   function_name = "emenu_post_confirmation"
   s3_bucket     =  data.aws_s3_bucket.lambda_code.id
-  s3_key        = "lambdas/emenu_post_confirmation/cognito_trigger.zip"
+  s3_key        = "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip"
 
   handler       = "index.handler"
   runtime       = "nodejs20.x"
