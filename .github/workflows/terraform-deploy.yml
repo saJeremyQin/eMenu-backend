@@ -28,53 +28,115 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Package Lambda Functions
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Check for code changes and package Lambda functions
         run: |
-          echo "📦 Starting Lambda function packaging..."
+          echo "� Checking for code changes..."
+          
+          # 获取变更的文件列表
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "all")
+          echo "Changed files: $CHANGED_FILES"
+          
+          # 初始化标志
+          PACKAGE_EMENU_SERVER=false
+          PACKAGE_POST_CONFIRMATION=false
+          PACKAGE_IMAGE_PROCESSOR=false
+          PACKAGE_PRESIGNED_URL=false
+          PACKAGE_COMMON_MODELS=false
+          
+          # 检查是否需要重新打包
+          if [[ "$CHANGED_FILES" == "all" ]] || echo "$CHANGED_FILES" | grep -q "lambdas/emenu_server/"; then
+            PACKAGE_EMENU_SERVER=true
+            echo "🔄 Will package emenu_server (code changed)"
+          fi
+          
+          if [[ "$CHANGED_FILES" == "all" ]] || echo "$CHANGED_FILES" | grep -q "lambdas/emenu_post_confirmation/"; then
+            PACKAGE_POST_CONFIRMATION=true
+            echo "🔄 Will package emenu_post_confirmation (code changed)"
+          fi
+          
+          if [[ "$CHANGED_FILES" == "all" ]] || echo "$CHANGED_FILES" | grep -q "lambdas/image_processor/"; then
+            PACKAGE_IMAGE_PROCESSOR=true
+            echo "🔄 Will package image_processor (code changed)"
+          fi
+          
+          if [[ "$CHANGED_FILES" == "all" ]] || echo "$CHANGED_FILES" | grep -q "lambdas/presigned_url_generator/"; then
+            PACKAGE_PRESIGNED_URL=true
+            echo "🔄 Will package presigned_url_generator (code changed)"
+          fi
+          
+          if [[ "$CHANGED_FILES" == "all" ]] || echo "$CHANGED_FILES" | grep -q "lambdas/layers/common_models/"; then
+            PACKAGE_COMMON_MODELS=true
+            echo "🔄 Will package common_models layer (code changed)"
+          fi
           
           # 打包 emenu_server
-          echo "📦 Packaging emenu_server..."
-          cd lambdas/emenu_server
-          npm ci --production --silent
-          zip -r emenu_server.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
-          cd ../..
+          if [ "$PACKAGE_EMENU_SERVER" = true ]; then
+            echo "📦 Packaging emenu_server..."
+            cd lambdas/emenu_server
+            npm ci --production --silent
+            zip -r emenu_server.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+            cd ../..
+          else
+            echo "⏭️ Skipping emenu_server (no changes)"
+          fi
           
           # 打包 emenu_post_confirmation  
-          echo "📦 Packaging emenu_post_confirmation..."
-          cd lambdas/emenu_post_confirmation
-          npm ci --production --silent
-          zip -r emenu_post_confirmation.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
-          cd ../..
+          if [ "$PACKAGE_POST_CONFIRMATION" = true ]; then
+            echo "📦 Packaging emenu_post_confirmation..."
+            cd lambdas/emenu_post_confirmation
+            npm ci --production --silent
+            zip -r emenu_post_confirmation.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+            cd ../..
+          else
+            echo "⏭️ Skipping emenu_post_confirmation (no changes)"
+          fi
           
           # 打包 image_processor
-          echo "📦 Packaging image_processor..."
-          cd lambdas/image_processor
-          npm ci --production --silent
-          zip -r image_processor.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log" "build-*" "Dockerfile*"
-          cd ../..
+          if [ "$PACKAGE_IMAGE_PROCESSOR" = true ]; then
+            echo "📦 Packaging image_processor..."
+            cd lambdas/image_processor
+            npm ci --production --silent
+            zip -r image_processor.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log" "build-*" "Dockerfile*"
+            cd ../..
+          else
+            echo "⏭️ Skipping image_processor (no changes)"
+          fi
           
           # 打包 presigned_url_generator
-          echo "📦 Packaging presigned_url_generator..."
-          cd lambdas/presigned_url_generator
-          npm ci --production --silent
-          zip -r presigned_url_generator.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
-          cd ../..
+          if [ "$PACKAGE_PRESIGNED_URL" = true ]; then
+            echo "📦 Packaging presigned_url_generator..."
+            cd lambdas/presigned_url_generator
+            npm ci --production --silent
+            zip -r presigned_url_generator.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+            cd ../..
+          else
+            echo "⏭️ Skipping presigned_url_generator (no changes)"
+          fi
           
           # 打包 common_models layer
-          echo "📦 Packaging common_models layer..."
-          cd lambdas/layers/common_models/nodejs
-          npm ci --production --silent
-          cd ..
-          zip -r common_models_layer.zip nodejs/ -x "*.git*" "test*" "*.md" "nodejs/node_modules/.cache/*" "*.log"
-          cd ../../..
+          if [ "$PACKAGE_COMMON_MODELS" = true ]; then
+            echo "📦 Packaging common_models layer..."
+            cd lambdas/layers/common_models/nodejs
+            npm ci --production --silent
+            cd ..
+            zip -r common_models_layer.zip nodejs/ -x "*.git*" "test*" "*.md" "nodejs/node_modules/.cache/*" "*.log"
+            cd ../../..
+          else
+            echo "⏭️ Skipping common_models layer (no changes)"
+          fi
           
           # 验证打包结果
-          echo "✅ Lambda packages created:"
-          ls -la lambdas/*/
-          ls -la lambdas/*/**.zip
-          ls -la lambdas/layers/*/*.zip
+          echo "✅ Packaging completed. Created packages:"
+          find lambdas/ -name "*.zip" -exec ls -la {} \; 2>/dev/null || echo "No zip files found"
           echo "📊 Package sizes:"
-          find lambdas/ -name "*.zip" -exec du -h {} \;
+          find lambdas/ -name "*.zip" -exec du -h {} \; 2>/dev/null || echo "No zip files to measure"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -87,7 +149,7 @@ jobs:
         run: |
           echo "📤 Uploading Lambda packages to S3..."
           
-          # 函数：检查文件是否需要上传（比较本地和S3的文件hash）
+          # 函数：检查文件是否需要上传（仅上传实际打包的文件）
           check_and_upload() {
             local local_file=$1
             local s3_path=$2
@@ -107,27 +169,20 @@ jobs:
                 echo "✅ $name unchanged, skipping upload"
               fi
             else
-              echo "❌ $local_file not found"
+              echo "⏭️ Skipping $name (not packaged in this run)"
             fi
           }
           
-          # 上传 Lambda 函数包（只有内容变化时才上传）
+          # 上传 Lambda 函数包（只上传实际打包的文件）
           check_and_upload "lambdas/emenu_server/emenu_server.zip" "lambdas/emenu_server/emenu_server.zip" "emenu_server"
           check_and_upload "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "emenu_post_confirmation"
           check_and_upload "lambdas/image_processor/image_processor.zip" "lambdas/image_processor/image_processor.zip" "image_processor"
           check_and_upload "lambdas/presigned_url_generator/presigned_url_generator.zip" "lambdas/presigned_url_generator/presigned_url_generator.zip" "presigned_url_generator"
           
-          # 上传 Lambda layer（只有内容变化时才上传）
+          # 上传 Lambda layer（只上传实际打包的文件）
           check_and_upload "lambdas/layers/common_models/common_models_layer.zip" "layers/common_models/common_models_layer.zip" "common_models_layer"
           
           echo "✅ Upload process completed"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-2
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
