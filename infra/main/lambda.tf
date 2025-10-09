@@ -1,7 +1,7 @@
 
 // Look up the bucket created in bootstrap
 data "aws_s3_bucket" "lambda_code" {
-    bucket = "emenu-lambda-code-bucket"
+  bucket = "emenu-lambda-code-bucket"
 }
 
 data "aws_s3_object" "lambda_layer" {
