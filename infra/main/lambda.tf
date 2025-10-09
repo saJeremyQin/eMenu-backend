@@ -45,7 +45,7 @@ resource "aws_lambda_function" "emenu_server" {
   # 使用静态的 source_code_hash 来避免不必要的重新部署
   # 当函数代码或依赖的 layer 发生变化时，请更新这个值
   # 格式：YYYYMMDD-v[version]-layer[layer_version]
-  source_code_hash = "20251009-v1-layer1"
+  source_code_hash = "20251009-v2-layer1"
 }
 
 # ----------------------------------------------------------
