@@ -1,5 +1,5 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
-import sharp from 'sharp';
+import Jimp from 'jimp';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 const BUCKET_NAME = process.env.S3_BUCKET;
@@ -14,15 +14,27 @@ export const handler = async (event) => {
     console.log(`Processing file: ${key}`);
 
     try {
-      // 检查是否是餐厅logo原始文件 - 基于User Pool sub的路径结构
-      const restaurantLogoMatch = key.match(/^public\/restaurant-logos\/([^\/]+)\/raw\/(.+)$/);
+      // 检查是否是餐厅logo原始文件 - 支持两种路径结构
+      // 1. 基于User Pool sub的路径: public/restaurant-logos/{userSub}/raw/{filename}
+      // 2. 直接上传测试路径: public/restaurant-logos/{filename}
+      const restaurantLogoMatch = key.match(/^public\/restaurant-logos\/([^\/]+)\/raw\/(.+)$/) || 
+                                 key.match(/^public\/restaurant-logos\/([^\/]+\.(jpg|jpeg|png))$/i);
       
       if (!restaurantLogoMatch) {
         console.log('File path does not match restaurant logo pattern, skipping');
         continue;
       }
 
-      const [, userSub, filename] = restaurantLogoMatch;
+      let userSub, filename;
+      if (restaurantLogoMatch[2] && restaurantLogoMatch[3]) {
+        // 直接上传格式: public/restaurant-logos/filename.ext
+        userSub = 'test-user'; // 测试用户
+        filename = restaurantLogoMatch[1];
+      } else {
+        // 标准格式: public/restaurant-logos/{userSub}/raw/{filename}
+        [, userSub, filename] = restaurantLogoMatch;
+      }
+      
       console.log(`Processing restaurant logo for User Pool sub: ${userSub}, file: ${filename}`);
 
       // 检查文件类型
@@ -58,21 +70,24 @@ export const handler = async (event) => {
       }
       const imageBuffer = Buffer.concat(chunks);
       
-      // 使用Sharp处理图片 - 餐厅logo标准化为300x300
-      const processedImageBuffer = await sharp(imageBuffer)
-        .resize(300, 300, {
-          fit: 'cover',
-          position: 'center'
-        })
-        .jpeg({
-          quality: 85,
-          progressive: true
-        })
-        .toBuffer();
+      // 使用Jimp处理图片 - 餐厅logo标准化为300x300
+      const image = await Jimp.read(imageBuffer);
+      const processedImageBuffer = await image
+        .cover(300, 300) // 裁剪并缩放到300x300，保持宽高比
+        .quality(85) // 设置JPEG质量
+        .getBufferAsync(Jimp.MIME_JPEG);
 
-      // 生成处理后的文件名，保存到同一个User Pool sub下的processed目录
+      // 生成处理后的文件名，保存路径根据上传类型决定
       const fileNameWithoutExt = filename.split('.')[0];
-      const processedKey = `public/restaurant-logos/${userSub}/processed/${fileNameWithoutExt}.jpg`;
+      let processedKey;
+      
+      if (userSub === 'test-user') {
+        // 直接上传的测试文件，保存到processed目录
+        processedKey = `public/restaurant-logos/processed/${fileNameWithoutExt}.jpg`;
+      } else {
+        // 标准用户上传，保存到用户专属的processed目录
+        processedKey = `public/restaurant-logos/${userSub}/processed/${fileNameWithoutExt}.jpg`;
+      }
 
       // 上传处理后的图片
       const putObjectParams = {

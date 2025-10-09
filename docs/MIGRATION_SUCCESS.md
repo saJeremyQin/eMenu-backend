@@ -14,9 +14,10 @@ Date: October 6, 2025
 
 #### 2. Image Processor Lambda  
 - **Function Name**: `emenu-image-processor-dev`
-- **Runtime**: Node.js 20.x (with Sharp for image processing)
+- **Runtime**: Node.js 20.x (with Jimp for image processing)
 - **Purpose**: Automatically resize uploaded images to 300x300 optimized versions
 - **Triggers**: S3 ObjectCreated events for .jpg, .jpeg, .png files in `public/restaurant-logos/`
+- **Latest Update**: Migrated from Sharp to Jimp (October 9, 2025) for better Lambda compatibility
 
 #### 3. S3 Bucket
 - **Bucket Name**: `emenu-restaurant-assets-dev`
