@@ -76,6 +76,11 @@ jobs:
           if [[ "$CHANGED_FILES" == "all" ]] || echo "$CHANGED_FILES" | grep -q "lambdas/layers/common_models/"; then
             PACKAGE_COMMON_MODELS=true
             echo "🔄 Will package common_models layer (code changed)"
+            # 当 layer 变化时，所有依赖该 layer 的函数也需要重新打包
+            PACKAGE_EMENU_SERVER=true
+            PACKAGE_POST_CONFIRMATION=true
+            echo "🔄 Will also package emenu_server (depends on common_models layer)"
+            echo "🔄 Will also package emenu_post_confirmation (depends on common_models layer)"
           fi
           
           # 打包 emenu_server
