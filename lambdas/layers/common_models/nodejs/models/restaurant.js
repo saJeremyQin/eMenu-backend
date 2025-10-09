@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// Test: Layer change for CI/CD testing - updated at 2025-10-09-v2
+// Test: Layer change for CI/CD testing - updated at 2025-10-09-v3 (dependency test)
 const RestaurantSchema = new mongoose.Schema({
   bossId: { type: String, required: true }, // 改为 String 类型存储 cognitoId
   name: { type: String, required: true },
