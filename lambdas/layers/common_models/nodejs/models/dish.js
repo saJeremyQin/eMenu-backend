@@ -16,7 +16,7 @@ const DishSchema = new mongoose.Schema({
     versionKey: false,                // 去掉 __v 字段
     transform: (_, ret) => {
         ret.id = ret._id.toString();  // 映射 _id -> id
-        delete ret._id;               // delete _id，避免重复
+        delete ret._id;               // delete _id，avoid duplication.
     }
   }
 });
