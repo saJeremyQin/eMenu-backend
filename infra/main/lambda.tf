@@ -4,11 +4,6 @@ data "aws_s3_bucket" "lambda_code" {
   bucket = "emenu-lambda-code-bucket"
 }
 
-data "aws_s3_object" "lambda_layer" {
-  bucket = data.aws_s3_bucket.lambda_code.id
-  key    = "layers/common_models/common_models_layer.zip"
-}
-
 # --------------------------------------------------------------------------
 # Lambda Layer for Common Mongoose Models, managed by Terraform
 # --------------------------------------------------------------------------
@@ -19,7 +14,10 @@ resource "aws_lambda_layer_version" "common_mongoose_models" {
   s3_key              = "layers/common_models/common_models_layer.zip"
   compatible_runtimes = ["nodejs20.x"]
 
-  source_code_hash = data.aws_s3_object.lambda_layer.etag
+  # 使用静态的 source_code_hash 来避免不必要的重新部署
+  # 只有当我们明确更新这个值时，layer 才会重新部署
+  # 格式：YYYYMMDD-HHMMSS 或版本号
+  source_code_hash = "20251009-v1"
 }
 
 
@@ -43,7 +41,11 @@ resource "aws_lambda_function" "emenu_server" {
   }
 
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
-  # source_code_hash = filebase64sha256("../../lambda.zip")
+  
+  # 使用静态的 source_code_hash 来避免不必要的重新部署
+  # 当函数代码或依赖的 layer 发生变化时，请更新这个值
+  # 格式：YYYYMMDD-v[version]-layer[layer_version]
+  source_code_hash = "20251009-v1-layer1"
 }
 
 # ----------------------------------------------------------
@@ -68,6 +70,11 @@ resource "aws_lambda_function" "emenu_post_confirmation" {
   }
 
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
+  
+  # 使用静态的 source_code_hash 来避免不必要的重新部署
+  # 当函数代码或依赖的 layer 发生变化时，请更新这个值
+  # 格式：YYYYMMDD-v[version]-layer[layer_version]
+  source_code_hash = "20251009-v1-layer1"
 }
 
 // add permission, allow cognito user pool to invoke emenu_post_confirmation
@@ -271,6 +278,11 @@ resource "aws_lambda_function" "image_processor" {
     }
   }
 
+  # 使用静态的 source_code_hash 来避免不必要的重新部署
+  # 当函数代码发生变化时，请更新这个值
+  # 格式：YYYYMMDD-v[version]
+  source_code_hash = "20251009-v1"
+
   depends_on = [
     aws_iam_role_policy.image_processor_policy,
     aws_cloudwatch_log_group.image_processor_logs
@@ -386,6 +398,11 @@ resource "aws_lambda_function" "presigned_url_generator" {
       S3_BUCKET = aws_s3_bucket.restaurant_assets.bucket
     }
   }
+
+  # 使用静态的 source_code_hash 来避免不必要的重新部署
+  # 当函数代码发生变化时，请更新这个值
+  # 格式：YYYYMMDD-v[version]
+  source_code_hash = "20251009-v1"
 
   depends_on = [
     aws_iam_role_policy.presigned_url_policy,

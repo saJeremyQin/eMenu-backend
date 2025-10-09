@@ -87,24 +87,40 @@ jobs:
         run: |
           echo "📤 Uploading Lambda packages to S3..."
           
-          # 上传 Lambda 函数包
-          aws s3 cp lambdas/emenu_server/emenu_server.zip \
-            s3://emenu-lambda-code-bucket/lambdas/emenu_server/emenu_server.zip
+          # 函数：检查文件是否需要上传（比较本地和S3的文件hash）
+          check_and_upload() {
+            local local_file=$1
+            local s3_path=$2
+            local name=$3
+            
+            if [ -f "$local_file" ]; then
+              local_hash=$(md5sum "$local_file" | cut -d' ' -f1)
+              
+              # 获取S3中的文件hash（如果存在）
+              s3_hash=$(aws s3api head-object --bucket emenu-lambda-code-bucket --key "$s3_path" --query 'Metadata.md5hash' --output text 2>/dev/null || echo "null")
+              
+              if [ "$local_hash" != "$s3_hash" ]; then
+                echo "🔄 Uploading $name (hash changed: $s3_hash -> $local_hash)"
+                aws s3 cp "$local_file" "s3://emenu-lambda-code-bucket/$s3_path" \
+                  --metadata "md5hash=$local_hash"
+              else
+                echo "✅ $name unchanged, skipping upload"
+              fi
+            else
+              echo "❌ $local_file not found"
+            fi
+          }
           
-          aws s3 cp lambdas/emenu_post_confirmation/emenu_post_confirmation.zip \
-            s3://emenu-lambda-code-bucket/lambdas/emenu_post_confirmation/emenu_post_confirmation.zip
+          # 上传 Lambda 函数包（只有内容变化时才上传）
+          check_and_upload "lambdas/emenu_server/emenu_server.zip" "lambdas/emenu_server/emenu_server.zip" "emenu_server"
+          check_and_upload "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip" "emenu_post_confirmation"
+          check_and_upload "lambdas/image_processor/image_processor.zip" "lambdas/image_processor/image_processor.zip" "image_processor"
+          check_and_upload "lambdas/presigned_url_generator/presigned_url_generator.zip" "lambdas/presigned_url_generator/presigned_url_generator.zip" "presigned_url_generator"
           
-          aws s3 cp lambdas/image_processor/image_processor.zip \
-            s3://emenu-lambda-code-bucket/lambdas/image_processor/image_processor.zip
+          # 上传 Lambda layer（只有内容变化时才上传）
+          check_and_upload "lambdas/layers/common_models/common_models_layer.zip" "layers/common_models/common_models_layer.zip" "common_models_layer"
           
-          aws s3 cp lambdas/presigned_url_generator/presigned_url_generator.zip \
-            s3://emenu-lambda-code-bucket/lambdas/presigned_url_generator/presigned_url_generator.zip
-          
-          # 上传 Lambda layer
-          aws s3 cp lambdas/layers/common_models/common_models_layer.zip \
-            s3://emenu-lambda-code-bucket/layers/common_models/common_models_layer.zip
-          
-          echo "✅ All packages uploaded to S3"
+          echo "✅ Upload process completed"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
