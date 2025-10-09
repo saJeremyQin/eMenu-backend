@@ -249,14 +249,6 @@ resource "aws_iam_role_policy" "image_processor_policy" {
   })
 }
 
-# S3 object for image processor
-resource "aws_s3_object" "image_processor_zip" {
-  bucket = data.aws_s3_bucket.lambda_code.bucket
-  key    = "lambdas/image_processor/image_processor.zip"
-  source = "${path.root}/../../lambdas/image_processor/image_processor.zip"
-  etag   = filemd5("${path.root}/../../lambdas/image_processor/image_processor.zip")
-}
-
 # CloudWatch Log Group for image processor
 resource "aws_cloudwatch_log_group" "image_processor_logs" {
   name              = "/aws/lambda/emenu-image-processor-${var.environment}"
@@ -265,7 +257,7 @@ resource "aws_cloudwatch_log_group" "image_processor_logs" {
 
 resource "aws_lambda_function" "image_processor" {
   s3_bucket        = data.aws_s3_bucket.lambda_code.bucket
-  s3_key          = aws_s3_object.image_processor_zip.key
+  s3_key          = "lambdas/image_processor/image_processor.zip"
   function_name   = "emenu-image-processor-${var.environment}"
   role           = aws_iam_role.image_processor_role.arn
   handler        = "index.handler"
@@ -373,14 +365,6 @@ resource "aws_iam_role_policy" "presigned_url_policy" {
   })
 }
 
-# S3 object for presigned URL generator
-resource "aws_s3_object" "presigned_url_generator_zip" {
-  bucket = data.aws_s3_bucket.lambda_code.bucket
-  key    = "lambdas/presigned_url_generator/presigned_url_generator.zip"
-  source = "${path.root}/../../lambdas/presigned_url_generator/presigned_url_generator.zip"
-  etag   = filemd5("${path.root}/../../lambdas/presigned_url_generator/presigned_url_generator.zip")
-}
-
 # CloudWatch Log Group for presigned URL generator
 resource "aws_cloudwatch_log_group" "presigned_url_generator_logs" {
   name              = "/aws/lambda/emenu-presigned-url-generator-${var.environment}"
@@ -390,7 +374,7 @@ resource "aws_cloudwatch_log_group" "presigned_url_generator_logs" {
 # Presigned URL Generator Lambda Function
 resource "aws_lambda_function" "presigned_url_generator" {
   s3_bucket        = data.aws_s3_bucket.lambda_code.bucket
-  s3_key          = aws_s3_object.presigned_url_generator_zip.key
+  s3_key          = "lambdas/presigned_url_generator/presigned_url_generator.zip"
   function_name   = "emenu-presigned-url-generator-${var.environment}"
   role           = aws_iam_role.presigned_url_role.arn
   handler        = "index.handler"
