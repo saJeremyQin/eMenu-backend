@@ -62,9 +62,10 @@ jobs:
           
           # 打包 common_models layer
           echo "📦 Packaging common_models layer..."
-          cd lambdas/layers/common_models
+          cd lambdas/layers/common_models/nodejs
           npm ci --production --silent
-          zip -r common_models_layer.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
+          cd ..
+          zip -r common_models_layer.zip nodejs/ -x "*.git*" "test*" "*.md" "nodejs/node_modules/.cache/*" "*.log"
           cd ../../..
           
           # 验证打包结果
