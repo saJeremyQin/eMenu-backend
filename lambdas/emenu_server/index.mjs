@@ -9,7 +9,7 @@ import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
 // ====================================================================
 // SUBSCRIPTION PLAN LIMITS CONSTANTS
-// Test: CI/CD pipeline trigger - updated at 2025-10-09-v2
+// Test: CI/CD pipeline trigger - updated at 2025-10-09-v3
 // ====================================================================
 const SUBSCRIPTION_LIMITS = {
   BASIC: {
