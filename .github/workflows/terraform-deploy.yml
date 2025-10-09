@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 2  # 获取最近2次提交以便比较
 
       # Lambda打包步骤
       - name: Setup Node.js
