@@ -9,11 +9,6 @@ data "aws_s3_object" "lambda_layer" {
   key    = "layers/common_models/common_models_layer.zip"
 }
 
-data "aws_s3_object" "sharp_layer" {
-  bucket = data.aws_s3_bucket.lambda_code.id
-  key    = "layers/sharp-layer/sharp-layer.zip"
-}
-
 # --------------------------------------------------------------------------
 # Lambda Layer for Common Mongoose Models, managed by Terraform
 # --------------------------------------------------------------------------
@@ -25,19 +20,6 @@ resource "aws_lambda_layer_version" "common_mongoose_models" {
   compatible_runtimes = ["nodejs20.x"]
 
   source_code_hash = data.aws_s3_object.lambda_layer.etag
-}
-
-# --------------------------------------------------------------------------
-# Lambda Layer for Sharp Image Processing, managed by Terraform
-# --------------------------------------------------------------------------
-resource "aws_lambda_layer_version" "sharp_layer" {
-  layer_name          = "sharp-layer"
-  description         = "Sharp image processing library for Lambda with Linux binaries"
-  s3_bucket           = data.aws_s3_bucket.lambda_code.id
-  s3_key              = "layers/sharp-layer/sharp-layer.zip"
-  compatible_runtimes = ["nodejs20.x"]
-
-  source_code_hash = data.aws_s3_object.sharp_layer.etag
 }
 
 
