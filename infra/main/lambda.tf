@@ -14,8 +14,15 @@ resource "aws_lambda_layer_version" "common_mongoose_models" {
   s3_key              = "layers/common_models/common_models_layer.zip"
   compatible_runtimes = ["nodejs20.x"]
 
-  # 移除 source_code_hash，让 Terraform 依赖 S3 中的实际文件
-  # GitHub Actions 会智能上传变化的文件，Terraform 会检测 S3 对象的变化
+  # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
+  # 这样 Terraform 就能自动检测到 S3 中文件的变化
+  source_code_hash = data.aws_s3_object.layer_code.etag
+}
+
+# 获取 S3 中 layer 文件的信息
+data "aws_s3_object" "layer_code" {
+  bucket = data.aws_s3_bucket.lambda_code.bucket
+  key    = "layers/common_models/common_models_layer.zip"
 }
 
 
@@ -40,8 +47,14 @@ resource "aws_lambda_function" "emenu_server" {
 
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
   
-  # 移除 source_code_hash，让 Terraform 依赖 S3 中的实际文件
-  # GitHub Actions 会智能上传变化的文件，Terraform 会检测 S3 对象的变化
+  # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
+  source_code_hash = data.aws_s3_object.emenu_server_code.etag
+}
+
+# 获取 emenu_server S3 文件的信息
+data "aws_s3_object" "emenu_server_code" {
+  bucket = data.aws_s3_bucket.lambda_code.bucket
+  key    = "lambdas/emenu_server/emenu_server.zip"
 }
 
 # ----------------------------------------------------------
@@ -67,8 +80,14 @@ resource "aws_lambda_function" "emenu_post_confirmation" {
 
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
   
-  # 移除 source_code_hash，让 Terraform 依赖 S3 中的实际文件
-  # GitHub Actions 会智能上传变化的文件，Terraform 会检测 S3 对象的变化
+  # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
+  source_code_hash = data.aws_s3_object.emenu_post_confirmation_code.etag
+}
+
+# 获取 emenu_post_confirmation S3 文件的信息
+data "aws_s3_object" "emenu_post_confirmation_code" {
+  bucket = data.aws_s3_bucket.lambda_code.bucket
+  key    = "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip"
 }
 
 // add permission, allow cognito user pool to invoke emenu_post_confirmation
@@ -272,13 +291,19 @@ resource "aws_lambda_function" "image_processor" {
     }
   }
 
-  # 移除 source_code_hash，让 Terraform 依赖 S3 中的实际文件
-  # GitHub Actions 会智能上传变化的文件，Terraform 会检测 S3 对象的变化
+  # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
+  source_code_hash = data.aws_s3_object.image_processor_code.etag
 
   depends_on = [
     aws_iam_role_policy.image_processor_policy,
     aws_cloudwatch_log_group.image_processor_logs
   ]
+}
+
+# 获取 image_processor S3 文件的信息
+data "aws_s3_object" "image_processor_code" {
+  bucket = data.aws_s3_bucket.lambda_code.bucket
+  key    = "lambdas/image_processor/image_processor.zip"
 }
 
 # Lambda permission for S3 to invoke image processor
@@ -391,13 +416,19 @@ resource "aws_lambda_function" "presigned_url_generator" {
     }
   }
 
-  # 移除 source_code_hash，让 Terraform 依赖 S3 中的实际文件
-  # GitHub Actions 会智能上传变化的文件，Terraform 会检测 S3 对象的变化
+  # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
+  source_code_hash = data.aws_s3_object.presigned_url_generator_code.etag
 
   depends_on = [
     aws_iam_role_policy.presigned_url_policy,
     aws_cloudwatch_log_group.presigned_url_generator_logs
   ]
+}
+
+# 获取 presigned_url_generator S3 文件的信息
+data "aws_s3_object" "presigned_url_generator_code" {
+  bucket = data.aws_s3_bucket.lambda_code.bucket
+  key    = "lambdas/presigned_url_generator/presigned_url_generator.zip"
 }
 
 # Lambda Function URL for presigned URL generator

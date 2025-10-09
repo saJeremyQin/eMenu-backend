@@ -164,7 +164,22 @@ jobs:
             
             if [ -f "$local_file" ]; then
               echo "🔄 Uploading $name (packaged due to code changes)"
+              
+              # 显示文件信息用于调试
+              echo "  📄 Local file: $local_file"
+              echo "  📊 File size: $(du -h "$local_file" | cut -f1)"
+              echo "  🎯 S3 path: s3://emenu-lambda-code-bucket/$s3_path"
+              
+              # 上传到 S3
               aws s3 cp "$local_file" "s3://emenu-lambda-code-bucket/$s3_path"
+              
+              # 验证上传成功
+              if [ $? -eq 0 ]; then
+                echo "  ✅ Upload successful for $name"
+              else
+                echo "  ❌ Upload failed for $name"
+                exit 1
+              fi
             else
               echo "⏭️ Skipping $name (not packaged in this run)"
             fi
@@ -180,6 +195,11 @@ jobs:
           upload_if_exists "lambdas/layers/common_models/common_models_layer.zip" "layers/common_models/common_models_layer.zip" "common_models_layer"
           
           echo "✅ Upload process completed"
+          
+          # 验证上传结果
+          echo "🔍 Verifying uploaded files in S3:"
+          aws s3 ls s3://emenu-lambda-code-bucket/lambdas/ --recursive || echo "No lambda files found"
+          aws s3 ls s3://emenu-lambda-code-bucket/layers/ --recursive || echo "No layer files found"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
