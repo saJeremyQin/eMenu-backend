@@ -1,243 +1,185 @@
-# eMenu Backend CORS 配置指南
+# eMenu Backend CORS Configuration Guide
 
-## 概述
-本文档描述了 eMenu-backend 项目中 CORS（跨域资源共享）的正确配置方法，以及如何避免常见的 CORS 问题。
+## Quick Overview
 
-## 当前 CORS 配置
+eMenu backend uses serverless architecture with **AppSync GraphQL** + **Lambda Functions** + **S3 Storage**. CORS is configured at infrastructure level only.
 
-### Lambda Function URL CORS 设置
-位置：`infra/main/s3.tf`
+## Core API Usage
 
-```terraform
-resource "aws_lambda_function_url" "presigned_url_generator" {
-  function_name      = aws_lambda_function.presigned_url_generator.function_name
-  authorization_type = "NONE"
+### File Upload (2-Step Process)
 
-  cors {
-    allow_credentials = false
-    allow_origins     = ["*"]
-    allow_methods     = ["GET", "POST", "PUT", "DELETE", "HEAD", "PATCH"]
-    allow_headers     = [
-      "authorization",
-      "content-type", 
-      "date",
-      "keep-alive"
-    ]
-    expose_headers    = ["date", "keep-alive"]
-    max_age          = 86400
-  }
-}
-```
-
-### S3 Bucket CORS 设置
-位置：`infra/main/s3.tf`
-
-```terraform
-resource "aws_s3_bucket_cors_configuration" "restaurant_assets_cors" {
-  bucket = aws_s3_bucket.restaurant_assets.id
-
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
-    allowed_origins = ["*"]
-    expose_headers  = ["ETag"]
-    max_age_seconds = 3600
-  }
-}
-```
-
-## 重要原则
-
-### 1. 单一 CORS 配置源
-**✅ 正确做法**: 仅在基础设施层（Terraform）配置 CORS
-**❌ 错误做法**: 同时在基础设施和应用代码中配置 CORS
-
-### 2. Lambda Function URL 限制
-- HTTP 方法名不能超过 6 个字符
-- 因此使用 "PATCH" 而不是 "OPTIONS"
-- OPTIONS 请求由 AWS 自动处理
-
-### 3. 环境一致性
-所有环境（开发、测试、生产）使用相同的 CORS 配置，通过 Terraform 变量控制差异。
-
-## API 端点
-
-### Presigned URL Generator
-```
-URL: https://zbrgpwvql2clauytszsysqygz40rcpiq.lambda-url.ap-southeast-2.on.aws/
-方法: POST
-认证: JWT Token (在 Authorization header 中)
-```
-
-### S3 资产存储
-```
-Bucket: emenu-restaurant-assets-dev
-区域: ap-southeast-2
-访问: 公开读取，通过 presigned URL 写入
-```
-
-## 前端集成
-
-### JavaScript/TypeScript 示例
+#### Step 1: Get Presigned URL
 ```javascript
-// 正确的 API 调用示例
-const response = await fetch('https://zbrgpwvql2clauytszsysqygz40rcpiq.lambda-url.ap-southeast-2.on.aws/', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${jwtToken}`
-  },
-  body: JSON.stringify({
-    fileName: 'image.jpg',
-    fileType: 'image/jpeg'
-  })
-});
-
-if (response.ok) {
-  const data = await response.json();
-  console.log('Presigned URL:', data.uploadUrl);
-} else {
-  console.error('Error:', response.status);
-}
+const getPresignedUrl = async (fileName, contentType, jwtToken) => {
+  const response = await fetch('YOUR_LAMBDA_URL', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      authToken: jwtToken,     // JWT from Cognito
+      fileName: fileName,      // "restaurant-logo.jpg"
+      contentType: contentType // "image/jpeg"
+    })
+  });
+  
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return await response.json(); // { presignedUrl, s3Key }
+};
 ```
 
-### React 示例
+#### Step 2: Upload to S3
+```javascript
+const uploadFile = async (file, presignedUrl) => {
+  const response = await fetch(presignedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file
+  });
+  
+  if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+  return response;
+};
+```
+
+### Complete React Example
 ```jsx
-import { useState } from 'react';
+function FileUpload({ jwtToken }) {
+  const [status, setStatus] = useState('');
 
-function ImageUpload({ authToken }) {
-  const [uploading, setUploading] = useState(false);
+  const handleUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  const uploadImage = async (file) => {
-    setUploading(true);
-    
     try {
-      // 1. 获取 presigned URL
-      const presignedResponse = await fetch(
-        'https://zbrgpwvql2clauytszsysqygz40rcpiq.lambda-url.ap-southeast-2.on.aws/',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          },
-          body: JSON.stringify({
-            fileName: file.name,
-            fileType: file.type
-          })
-        }
+      setStatus('Getting upload URL...');
+      const { presignedUrl, s3Key } = await getPresignedUrl(
+        file.name, file.type, jwtToken
       );
 
-      if (!presignedResponse.ok) {
-        throw new Error('Failed to get presigned URL');
-      }
-
-      const { uploadUrl } = await presignedResponse.json();
-
-      // 2. 上传文件到 S3
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type
-        }
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      console.log('File uploaded successfully');
+      setStatus('Uploading...');
+      await uploadFile(file, presignedUrl);
       
+      setStatus(`Success! File: ${s3Key}`);
     } catch (error) {
-      console.error('Upload error:', error);
-    } finally {
-      setUploading(false);
+      setStatus(`Error: ${error.message}`);
     }
   };
 
   return (
-    <input 
-      type="file" 
-      onChange={(e) => uploadImage(e.target.files[0])}
-      disabled={uploading}
-    />
+    <div>
+      <input type="file" onChange={handleUpload} />
+      <p>{status}</p>
+    </div>
   );
 }
 ```
 
-## 故障排除
+### GraphQL Operations
+```javascript
+// Configure AWS Amplify
+import { Amplify } from 'aws-amplify';
 
-### 常见 CORS 错误
+Amplify.configure({
+  aws_appsync_graphqlEndpoint: 'YOUR_APPSYNC_ENDPOINT',
+  aws_appsync_region: 'ap-southeast-2',
+  aws_appsync_authenticationType: 'AMAZON_COGNITO_USER_POOLS'
+});
 
-1. **重复的 Access-Control-Allow-Origin 头**
-   - 原因：同时在基础设施和应用代码中设置 CORS
-   - 解决：仅在 Terraform 中配置 CORS
-
-2. **Method not allowed**
-   - 检查请求的 HTTP 方法是否在 `allow_methods` 中
-   - 确保方法名不超过 6 个字符
-
-3. **Header not allowed**
-   - 检查请求的头是否在 `allow_headers` 中
-   - 添加缺失的头到 Terraform 配置
-
-### 测试 CORS 配置
-```bash
-# 测试 OPTIONS 预检请求
-curl -X OPTIONS https://zbrgpwvql2clauytszsysqygz40rcpiq.lambda-url.ap-southeast-2.on.aws/ \
-  -H "Origin: http://localhost:3000" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: Content-Type,Authorization" \
-  -v
-
-# 测试实际 POST 请求
-curl -X POST https://zbrgpwvql2clauytszsysqygz40rcpiq.lambda-url.ap-southeast-2.on.aws/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"fileName": "test.jpg", "fileType": "image/jpeg"}' \
-  -v
+// GraphQL mutations work automatically with Cognito JWT
+const CREATE_RESTAURANT = `
+  mutation CreateRestaurant($input: CreateRestaurantInput!) {
+    createRestaurant(input: $input) {
+      id name logoUrl
+    }
+  }
+`;
 ```
 
-## 部署
+## Common Problems & Solutions
 
-### 应用 CORS 更改
+### Problem 1: CORS "Access-Control-Allow-Origin" Error
+**Cause**: Multiple CORS configurations  
+**Solution**: Remove CORS from Lambda code, keep only Terraform config
+
+### Problem 2: "Method Not Allowed" on OPTIONS
+**Cause**: Missing method in CORS config  
+**Solution**: Ensure all methods in `allow_methods` list
+
+### Problem 3: "Header Not Allowed"
+**Cause**: Custom headers not in CORS policy  
+**Solution**: Add required headers to Terraform CORS config
+
+### Problem 4: 401 Unauthorized with Valid JWT
+**Cause**: Wrong JWT format in request  
+**Solution**: Check JWT format and Authorization header
+
+## Current CORS Configuration
+
+### Lambda Function URL (presigned_url_generator)
+```terraform
+# infra/main/lambda.tf
+cors {
+  allow_credentials = false
+  allow_origins     = ["*"]                    # Dev: all origins
+  allow_methods     = ["GET", "POST", "PUT", "DELETE", "HEAD", "PATCH"]
+  allow_headers     = ["authorization", "content-type", "date", "keep-alive"]
+  expose_headers    = ["date", "keep-alive"]
+  max_age          = 86400
+}
+```
+
+### S3 Bucket
+```terraform
+# infra/main/s3.tf
+cors_rule {
+  allowed_headers = ["*"]
+  allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
+  allowed_origins = ["*"]
+  expose_headers  = ["ETag"]
+  max_age_seconds = 3000
+}
+```
+
+## Quick Testing
+
+### Test with cURL
+```bash
+# Test presigned URL endpoint
+curl -X POST YOUR_LAMBDA_URL \
+  -H "Content-Type: application/json" \
+  -d '{"authToken": "YOUR_JWT", "fileName": "test.jpg", "contentType": "image/jpeg"}'
+
+# Test CORS preflight
+curl -X OPTIONS YOUR_LAMBDA_URL \
+  -H "Origin: http://localhost:3000" \
+  -H "Access-Control-Request-Method: POST"
+```
+
+### Debug in Browser
+1. Open DevTools → Network tab
+2. Look for OPTIONS preflight requests
+3. Check CORS headers in response
+4. Verify no duplicate `Access-Control-Allow-Origin` headers
+
+## Production Security
+
+For production, update CORS to restrict origins:
+
+```terraform
+cors {
+  allow_origins = [
+    "https://yourdomain.com",
+    "https://app.yourdomain.com"
+  ]
+  allow_methods = ["GET", "POST", "PUT", "DELETE", "HEAD"]
+  allow_headers = ["authorization", "content-type"]
+}
+```
+
+## Deploy Changes
 ```bash
 cd infra/main
 terraform plan
 terraform apply
 ```
 
-### 验证部署
-```bash
-# 获取 Lambda URL
-terraform output presigned_url_generator_url
-
-# 测试 CORS
-curl -I -X OPTIONS [LAMBDA_URL]
-```
-
-## 安全考虑
-
-### 生产环境建议
-1. **限制 Origins**: 将 `allow_origins` 从 `["*"]` 改为具体的域名
-2. **HTTPS Only**: 确保所有请求都通过 HTTPS
-3. **JWT 验证**: 保持 Lambda 函数中的 JWT 验证逻辑
-
-### 示例生产配置
-```terraform
-cors {
-  allow_credentials = false
-  allow_origins     = [
-    "https://yourdomain.com",
-    "https://app.yourdomain.com"
-  ]
-  allow_methods     = ["GET", "POST", "PUT", "DELETE", "HEAD"]
-  allow_headers     = ["authorization", "content-type"]
-  expose_headers    = ["date"]
-  max_age          = 86400
-}
-```
-
-## 联系信息
-如有 CORS 相关问题，请联系后端团队或在项目 issue 中提出。
+That's it! CORS is configured once in Terraform and works automatically.
