@@ -3,7 +3,7 @@ name: Terraform Deploy
 on:
   push:
     branches:
-      - restaurantmanage  # 改为监听当前分支
+      - dev  # 监听dev分支的推送
     paths:
       - "infra/main/**"
       - "lambdas/**"      # 监听所有Lambda代码变更
