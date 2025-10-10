@@ -14,22 +14,22 @@ This document chronicles the comprehensive migration of backend services from th
 
 ### Why Migration?
 
-#### **1. Separation of Concerns**
-```
-Before: eMenu-admin (Monolithic)
-├── Frontend React App
-├── Backend Lambda Functions  
-├── Image Processing Logic
-├── Authentication Logic
-└── Infrastructure Mixed
+  #### **1. Separation of Concerns**
+  ```
+  Before: eMenu-admin (Monolithic)
+  ├── Frontend React App
+  ├── Backend Lambda Functions  
+  ├── Image Processing Logic
+  ├── Authentication Logic
+  └── Infrastructure Mixed
 
-After: Dedicated Services
-├── eMenu-admin (Frontend Only)
-├── eMenu-backend (Pure Backend)
-│   ├── GraphQL API (AppSync)
-│   ├── Lambda Functions
-│   ├── Authentication Services
-│   └── File Processing Pipeline
+  After: Dedicated Services
+  ├── eMenu-admin (Frontend Only)
+  ├── eMenu-backend (Pure Backend)
+  │   ├── GraphQL API (AppSync)
+  │   ├── Lambda Functions
+  │   ├── Authentication Services
+  │   └── File Processing Pipeline
 ```
 
 #### **2. Scalability Benefits**
@@ -229,60 +229,121 @@ const processedImageBuffer = await image
 
 ## 📊 Current Architecture Overview
 
-### **Service Architecture**
+### **Service Architecture Flow**
 
+#### **File Upload & Processing Flow**
+```mermaid
+sequenceDiagram
+    participant F as Frontend
+    participant C as Cognito
+    participant PUG as presigned_url_generator
+    participant S3 as S3 Bucket
+    participant IP as image_processor
+
+    F->>C: Login with credentials
+    C->>F: JWT Token
+    F->>PUG: Request presigned URL (JWT in header)
+    PUG->>PUG: Verify JWT & extract userId
+    PUG->>S3: Generate presigned URL with user path
+    S3->>PUG: Presigned URL
+    PUG->>F: Return presigned URL
+    F->>S3: Upload file directly
+    S3->>IP: Trigger S3 event (file uploaded)
+    IP->>IP: Process image (resize, optimize)
+    IP->>S3: Save processed image
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Authentication │    │   File Storage  │
-│   (React)       │◄──►│   (Cognito)      │    │   (S3)          │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                        │                        ▲
-         ▼                        ▼                        │
-┌─────────────────────────────────────────────────────────┼─────────┐
-│                    eMenu-backend                        │         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │         │
-│  │   AppSync   │  │   Lambda    │  │   Lambda    │     │         │
-│  │   GraphQL   │  │   Functions │  │   Layers    │     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘     │         │
-│         │              │                  │            │         │
-│         ▼              ▼                  ▼            │         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │         │
-│  │emenu_server │  │image_process│  │presigned_url│     │         │
-│  │             │  │or           │  │generator    │     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘     │         │
-└─────────────────────────────────────────────────────────┼─────────┘
-                                                          │
-                                                          ▼
-                                                ┌─────────────────┐
-                                                │   MongoDB       │
-                                                │   (Database)    │
-                                                └─────────────────┘
+
+#### **GraphQL Data Operations Flow**
+```mermaid
+sequenceDiagram
+    participant F as Frontend
+    participant A as AppSync
+    participant ES as emenu_server
+    participant CL as common_models Layer
+    participant DB as MongoDB
+
+    F->>A: GraphQL Query/Mutation (JWT)
+    A->>A: Validate JWT token
+    A->>ES: Invoke Lambda function
+    ES->>CL: Import shared models & utilities
+    CL->>ES: Return data models
+    ES->>DB: Query/Update restaurant data
+    DB->>ES: Return data
+    ES->>A: Formatted response
+    A->>F: GraphQL response
+```
+
+#### **User Registration & Onboarding Flow**
+```mermaid
+sequenceDiagram
+    participant F as Frontend
+    participant C as Cognito
+    participant EPC as emenu_post_confirmation
+    participant CL as common_models Layer
+    participant DB as MongoDB
+
+    F->>C: User registration
+    C->>C: Create user account
+    C->>EPC: Trigger post-confirmation
+    EPC->>CL: Import shared models & utilities
+    CL->>EPC: Return data models
+    EPC->>DB: Create user profile & initial data
+    DB->>EPC: Confirm creation
+    EPC->>C: Complete onboarding
+    C->>F: Registration success
 ```
 
 ### **Lambda Functions Details**
 
-| Function | Runtime | Purpose | Trigger | Authentication |
-|----------|---------|---------|---------|---------------|
-| `emenu_server` | Node.js 20.x | GraphQL resolvers | AppSync | Cognito JWT |
-| `image_processor` | Node.js 20.x | Image optimization | S3 Events | IAM Role |
-| `presigned_url_generator` | Node.js 18.x | Secure upload URLs | HTTP (Lambda URL) | JWT Validation |
-| `emenu_post_confirmation` | Node.js 20.x | User onboarding | Cognito Trigger | Cognito Event |
+| Function | Runtime | Purpose | Trigger | Authentication | Layer Dependency |
+|----------|---------|---------|---------|---------------|------------------|
+| `emenu_server` | Node.js 20.x | GraphQL resolvers | AppSync | Cognito JWT | ✅ common_models |
+| `emenu_post_confirmation` | Node.js 20.x | User onboarding | Cognito Trigger | Cognito Event | ✅ common_models |
+| `image_processor` | Node.js 20.x | Image optimization | S3 Events | IAM Role | ❌ Independent |
+| `presigned_url_generator` | Node.js 18.x | Secure upload URLs | HTTP (Lambda URL) | JWT Validation | ❌ Independent |
 
-### **Data Flow Examples**
+**Direct Frontend Interaction Functions:**
+- `presigned_url_generator`: Frontend directly calls for secure file upload URLs
+- `image_processor`: Triggered by S3 events when files are uploaded
 
-#### **File Upload Process**
-1. User authenticates → Cognito issues JWT
-2. Frontend requests presigned URL → `presigned_url_generator`
-3. JWT validation → User-specific S3 path generation
-4. Direct upload to S3 → Triggers `image_processor`
-5. Automatic image optimization → 300x300 thumbnail creation
+**Backend Service Functions:**
+- `emenu_server`: Backend GraphQL operations via AppSync
+- `emenu_post_confirmation`: User onboarding triggered by Cognito
 
-#### **Restaurant Data Management**
-1. GraphQL query → AppSync
-2. AppSync invokes → `emenu_server`
-3. JWT validation → User context extraction
-4. MongoDB query → Restaurant-specific data
-5. Response formatting → GraphQL schema compliance
+**Layer Dependencies:**
+- `common_models`: Shared by `emenu_server` and `emenu_post_confirmation` for consistent data models
+
+### **Architecture Highlights**
+
+#### **Layer Dependencies & Isolation**
+- **`common_models` Layer**: 
+  - ✅ **Serves**: `emenu_server` + `emenu_post_confirmation`
+  - ❌ **Not used by**: `presigned_url_generator` + `image_processor`
+  - **Purpose**: Shared data models, validation schemas, utility functions
+
+#### **Function Isolation & Responsibilities**
+- **Independent Functions**: `presigned_url_generator` + `image_processor`
+  - No shared dependencies
+  - Direct frontend interaction or event-driven
+  - Focused single responsibilities
+
+- **Backend Service Functions**: `emenu_server` + `emenu_post_confirmation`
+  - Share common data models via layer
+  - Handle complex business logic
+  - Database interactions with consistent schemas
+
+#### **Interaction Patterns**
+
+1. **File Upload Chain**: 
+   Frontend → `presigned_url_generator` → S3 → `image_processor`
+
+2. **Data Operations Chain**: 
+   Frontend → AppSync → `emenu_server` (+ common_models) → MongoDB
+
+3. **User Onboarding Chain**: 
+   Cognito → `emenu_post_confirmation` (+ common_models) → MongoDB
+
+**Key Point**: `emenu_post_confirmation` and `image_processor` operate in completely separate workflows with no direct interaction.
 
 ---
 
