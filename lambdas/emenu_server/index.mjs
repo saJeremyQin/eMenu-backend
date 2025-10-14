@@ -450,22 +450,30 @@ const createRestaurant = async (args, identity) => {
 // 更新餐厅基本信息
 const updateRestaurantInfo = async (args, identity) => {
   console.log('Executing updateRestaurantInfo...');
-  const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const input = args.input;
+  console.log('Args:', JSON.stringify(args, null, 2));
+  console.log('Identity:', JSON.stringify(identity, null, 2));
   
-  if (!restaurantId) {
-    throw new Error('Restaurant not found for this user');
-  }
-
-  // 构建更新数据
-  const updateData = {};
-  if (input.name !== undefined) updateData.name = input.name;
-  if (input.image !== undefined) updateData.image = input.image;
-  if (input.address !== undefined) updateData.address = input.address;
-  if (input.phone !== undefined) updateData.phone = input.phone;
-  updateData.updatedAt = new Date();
-
   try {
+    const restaurantId = await getRestaurantIdFromIdentity(identity);
+    console.log('Restaurant ID:', restaurantId);
+    
+    const input = args.input;
+    console.log('Input data:', JSON.stringify(input, null, 2));
+    
+    if (!restaurantId) {
+      throw new Error('Restaurant not found for this user');
+    }
+
+    // 构建更新数据
+    const updateData = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.image !== undefined) updateData.image = input.image;
+    if (input.address !== undefined) updateData.address = input.address;
+    if (input.phone !== undefined) updateData.phone = input.phone;
+    updateData.updatedAt = new Date();
+    
+    console.log('Update data:', JSON.stringify(updateData, null, 2));
+
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       updateData,
@@ -482,6 +490,7 @@ const updateRestaurantInfo = async (args, identity) => {
     return resultObject;
   } catch (error) {
     console.error('Error updating restaurant info:', error);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 };
