@@ -405,6 +405,7 @@ const createRestaurant = async (args, identity) => {
     name: input.name,
     image: input.image || null,
     address: input.address || null,
+    phone: input.phone || null,
     bossId: cognitoId,
     subscriptionPlan: "BASIC", // 固定为 BASIC
     subscriptionExpiry: null, // BASIC 版本无到期时间
@@ -458,6 +459,7 @@ const updateRestaurantInfo = async (args, identity) => {
   if (input.name !== undefined) updateData.name = input.name;
   if (input.image !== undefined) updateData.image = input.image;
   if (input.address !== undefined) updateData.address = input.address;
+  if (input.phone !== undefined) updateData.phone = input.phone;
   updateData.updatedAt = new Date();
 
   try {

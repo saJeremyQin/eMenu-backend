@@ -40,6 +40,7 @@ type Restaurant {
   name: String!
   image: String
   address: String
+  phone: String
   subscriptionPlan: SubscriptionPlan!
   subscriptionExpiry: String! # 到期日，ISO 格式，比如 "2025-12-31"
 
@@ -109,12 +110,14 @@ input RestaurantInput {
   name: String!
   image: String
   address: String
+  phone: String
 }
 
 input RestaurantInfoInput {
   name: String
   image: String
   address: String
+  phone: String
 }
 
 input SubscriptionUpgradeInput {
