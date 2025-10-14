@@ -399,20 +399,23 @@ const createRestaurant = async (args, identity) => {
     throw new Error('Restaurant name and address are required.');
   }
 
-  // 创建餐厅 - 固定为 BASIC 套餐
-  const basicLimits = SUBSCRIPTION_LIMITS.BASIC;
-  const restaurant = new Restaurant({
-    name: input.name,
-    image: input.image || null,
-    address: input.address || null,
-    phone: input.phone || null,
-    bossId: cognitoId,
-    subscriptionPlan: "BASIC", // 固定为 BASIC
-    subscriptionExpiry: null, // BASIC 版本无到期时间
-    dishTypeLimit: basicLimits.dishTypes,
-    dishLimit: basicLimits.dishes,
-    waiterLimit: basicLimits.waiters
-  });
+    // 创建餐厅 - 固定为 BASIC 套餐，有效期3个月
+    const basicLimits = SUBSCRIPTION_LIMITS.BASIC;
+    const now = new Date();
+    const expiryDate = new Date(now.getTime());
+    expiryDate.setMonth(expiryDate.getMonth() + 3);
+    const restaurant = new Restaurant({
+      name: input.name,
+      image: input.image || null,
+      address: input.address || null,
+      phone: input.phone || null,
+      bossId: cognitoId,
+      subscriptionPlan: "BASIC",
+      subscriptionExpiry: expiryDate.toISOString(), // 设置为3个月后
+      dishTypeLimit: basicLimits.dishTypes,
+      dishLimit: basicLimits.dishes,
+      waiterLimit: basicLimits.waiters
+    });
 
   try {
     const savedRestaurant = await restaurant.save();
