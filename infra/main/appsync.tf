@@ -55,6 +55,19 @@ resource "aws_appsync_resolver" "get_user_query" {
   depends_on = [aws_appsync_graphql_api.emenu_apis]  
 }
 
+// Add resolver for getUserByCognito query
+resource "aws_appsync_resolver" "get_user_by_cognito_query" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "getUserByCognito"
+  type        = "Query"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/getUserByCognito-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
 resource "aws_appsync_resolver" "create_restaurant_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id
   field       = "createRestaurant"
