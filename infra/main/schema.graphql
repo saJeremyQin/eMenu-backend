@@ -158,6 +158,7 @@ input OrderInput {
 
 type Query {
   getUser(id: ID!): User
+  getUserByCognito(cid: ID!): User
   # 菜单查询 (Boss/Waiter)
   getRestaurant: Restaurant
   listDishTypes: [DishType]
