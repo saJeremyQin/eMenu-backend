@@ -6,6 +6,7 @@ const RestaurantSchema = new mongoose.Schema({
   name: { type: String, required: true },
   image: String,
   address: String,
+  phone: String,
   subscriptionPlan: { type: String, enum: ['BASIC', 'PREMIUM'], required: true, default: 'BASIC' },
   subscriptionExpiry: String, // 可为 null
   dishTypeLimit: { type: Number, required: true, default: 3 },

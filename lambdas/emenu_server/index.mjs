@@ -169,6 +169,8 @@ export const handler = async (event, context) => {
     switch (field) {
       case "getUser":
         return await getUser(event.arguments, identity);
+      case "getUserByCognito":
+        return await getUserByCognito(event.arguments, identity);
       case "getRestaurant":
         return await getRestaurant(event.arguments, identity);
       case "listDishTypes":
@@ -228,6 +230,45 @@ const getUser = async (args, identity) => {
   const callerGroups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
 
   console.log(`getUser request: Caller cognitoId: ${callerCognitoId}, Requested cognitoId: ${requestedCognitoId}`);
+  console.log(`Caller Groups: ${callerGroups.join(', ')}`);
+
+  if (callerGroups.includes("admin")) {
+    console.log(`Authorization: Caller ${callerCognitoId} is an admin. Allowing query for ${requestedCognitoId}.`);
+  } else if (requestedCognitoId === callerCognitoId) {
+    console.log(`Authorization: Caller ${callerCognitoId} is querying their own user data. Allowing.`);
+  } else {
+    console.error(`Authorization: Caller ${callerCognitoId} is not authorized to query user ${requestedCognitoId}.`);
+    throw new Error("Unauthorized: You are not authorized to access this user's information.");
+  }
+
+  try {
+    const user = await User.findOne({ cognitoId: requestedCognitoId });
+    if (!user) {
+      console.error(`User with cognitoId ${requestedCognitoId} not found.`);
+      return null;
+    }
+   return {
+      id: user._id ? user._id.toString() : user.cognitoId,
+      cognitoId: user.cognitoId,
+      email: user.email,
+      role: user.role,
+      restaurantId: user.restaurantId ? user.restaurantId.toString() : null,
+      isDeleted: !!user.isDeleted,
+    };
+  } catch (err) {
+    console.error(`Error fetching user ${requestedCognitoId}:`, err);
+    throw new Error(`Failed to fetch user: ${err.message}`);
+  }
+};
+
+// getUserByCognito 查询（按 cognitoId 查找，参数名为 cid，兼容 admin 权限）
+const getUserByCognito = async (args, identity) => {
+  console.log('Executing getUserByCognito...');
+  const requestedCognitoId = args.cid; // GraphQL query 的 cid 参数
+  const callerCognitoId = identity.sub;
+  const callerGroups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
+
+  console.log(`getUserByCognito request: Caller cognitoId: ${callerCognitoId}, Requested cognitoId: ${requestedCognitoId}`);
   console.log(`Caller Groups: ${callerGroups.join(', ')}`);
 
   if (callerGroups.includes("admin")) {
@@ -399,19 +440,23 @@ const createRestaurant = async (args, identity) => {
     throw new Error('Restaurant name and address are required.');
   }
 
-  // 创建餐厅 - 固定为 BASIC 套餐
-  const basicLimits = SUBSCRIPTION_LIMITS.BASIC;
-  const restaurant = new Restaurant({
-    name: input.name,
-    image: input.image || null,
-    address: input.address || null,
-    bossId: cognitoId,
-    subscriptionPlan: "BASIC", // 固定为 BASIC
-    subscriptionExpiry: null, // BASIC 版本无到期时间
-    dishTypeLimit: basicLimits.dishTypes,
-    dishLimit: basicLimits.dishes,
-    waiterLimit: basicLimits.waiters
-  });
+    // 创建餐厅 - 固定为 BASIC 套餐，有效期3个月
+    const basicLimits = SUBSCRIPTION_LIMITS.BASIC;
+    const now = new Date();
+    const expiryDate = new Date(now.getTime());
+    expiryDate.setMonth(expiryDate.getMonth() + 3);
+    const restaurant = new Restaurant({
+      name: input.name,
+      image: input.image || null,
+      address: input.address || null,
+      phone: input.phone || null,
+      bossId: cognitoId,
+      subscriptionPlan: "BASIC",
+      subscriptionExpiry: expiryDate.toISOString(), // 设置为3个月后
+      dishTypeLimit: basicLimits.dishTypes,
+      dishLimit: basicLimits.dishes,
+      waiterLimit: basicLimits.waiters
+    });
 
   try {
     const savedRestaurant = await restaurant.save();
@@ -446,21 +491,30 @@ const createRestaurant = async (args, identity) => {
 // 更新餐厅基本信息
 const updateRestaurantInfo = async (args, identity) => {
   console.log('Executing updateRestaurantInfo...');
-  const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const input = args.input;
+  console.log('Args:', JSON.stringify(args, null, 2));
+  console.log('Identity:', JSON.stringify(identity, null, 2));
   
-  if (!restaurantId) {
-    throw new Error('Restaurant not found for this user');
-  }
-
-  // 构建更新数据
-  const updateData = {};
-  if (input.name !== undefined) updateData.name = input.name;
-  if (input.image !== undefined) updateData.image = input.image;
-  if (input.address !== undefined) updateData.address = input.address;
-  updateData.updatedAt = new Date();
-
   try {
+    const restaurantId = await getRestaurantIdFromIdentity(identity);
+    console.log('Restaurant ID:', restaurantId);
+    
+    const input = args.input;
+    console.log('Input data:', JSON.stringify(input, null, 2));
+    
+    if (!restaurantId) {
+      throw new Error('Restaurant not found for this user');
+    }
+
+    // 构建更新数据
+    const updateData = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.image !== undefined) updateData.image = input.image;
+    if (input.address !== undefined) updateData.address = input.address;
+    if (input.phone !== undefined) updateData.phone = input.phone;
+    updateData.updatedAt = new Date();
+    
+    console.log('Update data:', JSON.stringify(updateData, null, 2));
+
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       updateData,
@@ -477,6 +531,7 @@ const updateRestaurantInfo = async (args, identity) => {
     return resultObject;
   } catch (error) {
     console.error('Error updating restaurant info:', error);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 };
