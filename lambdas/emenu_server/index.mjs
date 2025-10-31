@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { CognitoIdentityServiceProvider } from 'aws-sdk';
+import { CognitoIdentityProviderClient, AdminGetUserCommand, AdminCreateUserCommand, AdminSetUserPasswordCommand } from "@aws-sdk/client-cognito-identity-provider";
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 import Dish from '/opt/nodejs/models/dish.js';
@@ -9,7 +9,7 @@ import OrderItem from '/opt/nodejs/models/orderItem.js';
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
 // SES mail sender
-import AWS from 'aws-sdk';
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import crypto from 'crypto';
 
 
@@ -32,15 +32,15 @@ const SUBSCRIPTION_LIMITS = {
   }
 };
 
-const cognito = new CognitoIdentityServiceProvider({ region: 'ap-southeast-2' });
-const ses = new AWS.SES({ region: 'ap-southeast-2' });
+const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-2" });
+const sesClient = new SESClient({ region: "ap-southeast-2" });
 
 async function sendInviteEmail(toEmail, inviteLink) {
   const params = {
-    Source: 'noreply@emenu.au',
+    Source: "noreply@emenu.au",
     Destination: { ToAddresses: [toEmail] },
     Message: {
-      Subject: { Data: 'Emenu Waiter Invitation' },
+      Subject: { Data: "Emenu Waiter Invitation" },
       Body: {
         Html: {
           Data: `
@@ -51,7 +51,7 @@ async function sendInviteEmail(toEmail, inviteLink) {
       }
     }
   };
-  await ses.sendEmail(params).promise();
+  await sesClient.send(new SendEmailCommand(params));
 }
 
 let cachedDbUri = null;
@@ -801,14 +801,14 @@ const registerWaiter = async (args, identity) => {
     // 先尝试查找 Cognito 用户
     let cognitoUser;
     try {
-      const getUserRes = await cognito.adminGetUser({
+      const getUserRes = await cognitoClient.send(new AdminGetUserCommand({
         UserPoolId: userPoolId,
         Username: waiter.email
-      }).promise();
+      }));
       cognitoUser = getUserRes;
     } catch (e) {
       // 用户不存在则创建
-      const createUserRes = await cognito.adminCreateUser({
+      const createUserRes = await cognitoClient.send(new AdminCreateUserCommand({
         UserPoolId: userPoolId,
         Username: waiter.email,
         UserAttributes: [
@@ -816,17 +816,17 @@ const registerWaiter = async (args, identity) => {
           { Name: 'email_verified', Value: 'true' }
         ],
         MessageAction: 'SUPPRESS'
-      }).promise();
+      }));
       cognitoUser = createUserRes.User;
     }
 
     // 设置密码
-    await cognito.adminSetUserPassword({
+    await cognitoClient.send(new AdminSetUserPasswordCommand({
       UserPoolId: userPoolId,
       Username: waiter.email,
       Password: password,
       Permanent: true
-    }).promise();
+    }));
 
     // 获取 Cognito sub
     let subAttr;
