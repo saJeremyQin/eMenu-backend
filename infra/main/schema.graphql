@@ -26,13 +26,7 @@ enum OrderStatus {
 # 用户 Type (用于身份和权限管理)
 type User {
   id: ID! # Mongoose _id
-  cognitoId: {
-    type: String, # Cognito Sub ID
-    required: function() {
-      return this.role !== 'waiter' || this.status === 'active';
-    },
-    default: null
-  }
+  cognitoId: String # Cognito Sub ID
   email: String!
   role: Role!
   restaurantId: ID # 关联的餐厅 ID (Waiter 必有)

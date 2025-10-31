@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema({
-  cognitoId: { type: String, required: true },
+  cognitoId: { 
+    type: String,
+    required: function() {
+      return this.role !== 'waiter' || this.status === 'active';
+    },
+    default: null
+  },
   email: { type: String, required: true },
   role: { type: String, enum: ['boss', 'waiter'], required: true },
   restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant' },
