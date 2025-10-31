@@ -308,6 +308,17 @@ resource "aws_appsync_resolver" "invite_waiter_mutation" {
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
+resource "aws_appsync_resolver" "register_waiter_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "registerWaiter"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/registerWaiter-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
 // Create a role for AppSync to invoke lambda
 resource "aws_iam_role" "appsync_lambda_role" {
     name = "appsync-lambda-invoke-role"

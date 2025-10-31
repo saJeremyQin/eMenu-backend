@@ -488,8 +488,8 @@ const createRestaurant = async (args, identity) => {
 
   try {
     const savedRestaurant = await restaurant.save();
-    
-    // 更新用户记录，设置 restaurantId
+
+    // Update user record, set restaurantId
     try {
       await User.findOneAndUpdate(
         { cognitoId: cognitoId },
