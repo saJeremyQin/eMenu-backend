@@ -31,6 +31,8 @@ type User {
   role: Role!
   restaurantId: ID # 关联的餐厅 ID (Waiter 必有)
   isDeleted: Boolean! # 软删除标记
+  inviteToken: String # 仅 waiter 用户有效
+  status: String # waiter registration status: 'pending', 'active', 'disabled', etc.
 }
 
 # 餐厅 Type (包含订阅和限额信息)
@@ -163,6 +165,7 @@ type Query {
   getRestaurant: Restaurant
   listDishTypes: [DishType]
   listDishes(dishTypeId: ID): [Dish]
+  listWaiters: [User]
 
   # 订单查询
   listOrders(status: OrderStatus, dateFrom: String, dateTo: String): [Order]
@@ -173,7 +176,12 @@ type Mutation {
   createRestaurant(input: RestaurantInput!): Restaurant # 仅创建 BASIC 版本
   updateRestaurantInfo(input: RestaurantInfoInput!): Restaurant # 更新餐厅基本信息
   updateRestaurantSubscriptionPlan(input: SubscriptionUpgradeInput!): Restaurant # 订阅升级
-  inviteWaiter(email: String!): User 
+  
+  # invite waiter, delete waiter
+  inviteWaiter(email: String!): User
+  registerWaiter(token: String!, password: String!): User # waiter registration via inviteToken
+  deleteWaiter(id: ID!): Boolean
+  activateWaiter(token: String!, password: String!): Boolean
 
   # 菜单管理
   createDishType(input: DishTypeInput!): DishType

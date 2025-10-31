@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { CognitoIdentityServiceProvider } from 'aws-sdk';
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 import Dish from '/opt/nodejs/models/dish.js';
@@ -6,6 +7,11 @@ import DishType from '/opt/nodejs/models/dishType.js';
 import Order from '/opt/nodejs/models/order.js';
 import OrderItem from '/opt/nodejs/models/orderItem.js';
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+
+// SES mail sender
+import AWS from 'aws-sdk';
+import crypto from 'crypto';
+
 
 // ====================================================================
 // SUBSCRIPTION PLAN LIMITS CONSTANTS
@@ -25,6 +31,28 @@ const SUBSCRIPTION_LIMITS = {
     waiters: 20
   }
 };
+
+const cognito = new CognitoIdentityServiceProvider({ region: 'ap-southeast-2' });
+const ses = new AWS.SES({ region: 'ap-southeast-2' });
+
+async function sendInviteEmail(toEmail, inviteLink) {
+  const params = {
+    Source: 'noreply@emenu.au',
+    Destination: { ToAddresses: [toEmail] },
+    Message: {
+      Subject: { Data: 'Emenu Waiter Invitation' },
+      Body: {
+        Html: {
+          Data: `
+            <p>You are invited to register as a waiter/waiteress, please complete your registration by clicking the link below:</p>
+            <a href="${inviteLink}">${inviteLink}</a>
+          `
+        }
+      }
+    }
+  };
+  await ses.sendEmail(params).promise();
+}
 
 let cachedDbUri = null;
 
@@ -594,7 +622,7 @@ const updateRestaurantSubscriptionPlan = async (args, identity) => {
   }
 };
 
-// 邀请服务员
+// inviteWaiter
 const inviteWaiter = async (args, identity) => {
   console.log('Executing inviteWaiter...');
   const cognitoId = identity.sub;
@@ -619,46 +647,51 @@ const inviteWaiter = async (args, identity) => {
   }
 
   try {
-    // 检查用户是否已存在
+    // check if user with the email already exists
     const existingUser = await User.findOne({ email });
-    
     if (existingUser) {
-      // 如果用户存在但被删除，可以重新激活
+      // if user exists but is disabled, reactivate
       if (existingUser.isDeleted) {
+        // 生成新的 inviteToken
+        const newInviteToken = crypto.randomBytes(32).toString('hex');
         const reactivatedUser = await User.findByIdAndUpdate(
           existingUser._id,
           {
             isDeleted: false,
             role: 'waiter',
             restaurantId: restaurant._id,
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            inviteToken: newInviteToken
           },
           { new: true }
         );
-        
         console.log('Waiter reactivated successfully:', reactivatedUser._id);
+        // 生成带新 token 的邀请链接并发送邮件
+        const inviteLink = `https://admin.emenu.au/waiter-register?token=${newInviteToken}`;
+        await sendInviteEmail(email, inviteLink);
         return reactivatedUser.toJSON();
       } else {
         throw new Error('User with this email already exists and is active');
       }
     }
 
-    // 创建新的服务员用户（注意：这里假设用户会通过 Cognito 注册流程）
-    // 在实际应用中，您可能需要发送邀请邮件让用户完成注册
+    // 生成一次性token
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+    // 创建新的服务员用户，存储token
     const newWaiter = new User({
       email: email,
       cognitoId: null, // 将在用户注册时更新
       role: 'waiter',
       restaurantId: restaurant._id,
-      isDeleted: false
+      isDeleted: false,
+      inviteToken
     });
 
     const savedWaiter = await newWaiter.save();
     console.log('Waiter invited successfully:', savedWaiter._id);
-    
-    // TODO: 这里应该发送邀请邮件给服务员
-    console.log('TODO: Send invitation email to:', email);
-    
+    // 生成带token的邀请链接
+    const inviteLink = `https://admin.emenu.au/waiter-register?token=${inviteToken}`;
+    await sendInviteEmail(email, inviteLink);
     return savedWaiter.toJSON();
   } catch (error) {
     console.error('Error inviting waiter:', error);
@@ -717,43 +750,105 @@ const updateDishType = async (args, identity) => {
   console.log('Executing updateDishType...');
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { id, input } = args;
-  
   try {
-    const dishType = await DishType.findOne({ 
-      _id: id, 
-      restaurantId, 
-      isDeleted: { $ne: true } 
+    const dishType = await DishType.findOne({
+      _id: id,
+      restaurantId,
+      isDeleted: { $ne: true }
     });
-    
     if (!dishType) {
       throw new Error('Dish type not found or already deleted.');
     }
-    
     // 如果更新名称，检查是否与其他分类重名
     if (input.name && input.name !== dishType.name) {
-      const existing = await DishType.findOne({ 
-        restaurantId, 
-        name: input.name, 
+      const existing = await DishType.findOne({
+        restaurantId,
+        name: input.name,
         isDeleted: { $ne: true },
         _id: { $ne: id }
       });
-      
       if (existing) {
         throw new Error('A dish type with this name already exists.');
       }
     }
-    
     // 更新字段
     if (input.name) dishType.name = input.name;
     if (input.alias !== undefined) dishType.alias = input.alias;
     if (input.sortOrder !== undefined) dishType.sortOrder = input.sortOrder;
-    
     const updatedDishType = await dishType.save();
     return updatedDishType.toJSON();
   } catch (err) {
     console.error(`Error updating dish type ${id}:`, err);
     throw new Error(`Failed to update dish type: ${err.message}`);
   }
+};
+
+const registerWaiter = async (args, identity) => {
+  console.log('Executing registerWaiter...');
+  const { token, password } = args;
+  if (!token || !password) throw new Error('Token and password are required.');
+
+  // 查找带有 inviteToken 的 waiter 用户
+  const waiter = await User.findOne({ inviteToken: token, role: 'waiter', isDeleted: false });
+  if (!waiter) throw new Error('Invalid or expired token.');
+  // 允许重新激活的 waiter（已有 cognitoId）继续注册/激活
+
+  const userPoolId = process.env.WAITER_USER_POOL_ID;
+  if (!userPoolId) throw new Error('WAITER_USER_POOL_ID is not set in environment variables.');
+
+  let cognitoId;
+  try {
+    // 先尝试查找 Cognito 用户
+    let cognitoUser;
+    try {
+      const getUserRes = await cognito.adminGetUser({
+        UserPoolId: userPoolId,
+        Username: waiter.email
+      }).promise();
+      cognitoUser = getUserRes;
+    } catch (e) {
+      // 用户不存在则创建
+      const createUserRes = await cognito.adminCreateUser({
+        UserPoolId: userPoolId,
+        Username: waiter.email,
+        UserAttributes: [
+          { Name: 'email', Value: waiter.email },
+          { Name: 'email_verified', Value: 'true' }
+        ],
+        MessageAction: 'SUPPRESS'
+      }).promise();
+      cognitoUser = createUserRes.User;
+    }
+
+    // 设置密码
+    await cognito.adminSetUserPassword({
+      UserPoolId: userPoolId,
+      Username: waiter.email,
+      Password: password,
+      Permanent: true
+    }).promise();
+
+    // 获取 Cognito sub
+    let subAttr;
+    if (cognitoUser.UserAttributes) {
+      subAttr = cognitoUser.UserAttributes.find(attr => attr.Name === 'sub');
+    } else if (cognitoUser.Attributes) {
+      subAttr = cognitoUser.Attributes.find(attr => attr.Name === 'sub');
+    }
+    cognitoId = subAttr ? subAttr.Value : null;
+    if (!cognitoId) throw new Error('Cognito user sub not found.');
+  } catch (err) {
+    console.error('Error creating or updating Cognito user:', err);
+    throw new Error('Failed to register waiter in Cognito.');
+  }
+
+  // 更新 waiter 用户
+  waiter.cognitoId = cognitoId;
+  waiter.status = 'active';
+  waiter.inviteToken = null;
+  await waiter.save();
+  console.log('Waiter registered and activated:', waiter._id);
+  return waiter.toJSON();
 };
 
 // deleteDishType（软删除）

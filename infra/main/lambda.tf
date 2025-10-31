@@ -42,6 +42,7 @@ resource "aws_lambda_function" "emenu_server" {
   environment {
     variables = {
       DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name       //Pass the name of Parameter
+      WAITER_USER_POOL_ID = aws_cognito_user_pool.emenu_user_pool.id      // Cognito User Pool ID for waiter registration
     }
   }
 
