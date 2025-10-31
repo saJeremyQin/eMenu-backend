@@ -116,6 +116,8 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
+
+
 resource "aws_iam_role" "cognito_trigger" {
   name = "emenu_cognito_post_confirmation_role"
 
@@ -187,6 +189,24 @@ resource "aws_iam_role_policy" "emenu_server_ssm_access" {
           "kms:Decrypt"
         ], 
         Resource = "arn:aws:kms:ap-southeast-2:205930647566:key/9699535c-75c7-4ba3-96bb-2848475b1eda"
+      }
+    ]
+  }) 
+}
+
+resource "aws_iam_role_policy" "emenu_server_ses_access" {
+  name = "emenu_server_ses_access"
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ],
+        Resource = "arn:aws:ses:ap-southeast-2:205930647566:identity/emenu.au"
       }
     ]
   }) 
