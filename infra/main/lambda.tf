@@ -206,7 +206,7 @@ resource "aws_iam_role_policy" "emenu_server_ses_access" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ],
-        Resource = "arn:aws:ses:ap-southeast-2:205930647566:identity/emenu.au"
+        Resource = "arn:aws:ses:ap-southeast-2:205930647566:identity/*"
       }
     ]
   }) 

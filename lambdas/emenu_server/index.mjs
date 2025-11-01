@@ -36,6 +36,9 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-
 const sesClient = new SESClient({ region: "ap-southeast-2" });
 
 async function sendInviteEmail(toEmail, inviteLink) {
+  console.log("the Email is ", toEmail);
+  console.log("inviteLink is", inviteLink );
+  
   const params = {
     Source: "noreply@emenu.au",
     Destination: { ToAddresses: [toEmail] },
@@ -684,7 +687,8 @@ const inviteWaiter = async (args, identity) => {
       role: 'waiter',
       restaurantId: restaurant._id,
       isDeleted: false,
-      inviteToken
+      inviteToken,
+      status: 'PENDING',
     });
 
     const savedWaiter = await newWaiter.save();
