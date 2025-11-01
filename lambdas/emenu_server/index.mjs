@@ -630,10 +630,10 @@ const inviteWaiter = async (args, identity) => {
   console.log('Executing inviteWaiter...');
   const cognitoId = identity.sub;
   const groups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
-  console.log("ENVIRONMENT is", process.env.ENVIRONMENT);
 
   const isDev = process.env.ENVIRONMENT === 'dev';
-  console.log("isDev is", isDev);
+  const baseUrl = isDev ? 'https://localhost:5173/waiter-register' : 'https://admin.emenu.au/waiter-register';
+
   
   if (!groups.includes("boss")) {
     throw new Error("Only boss users can invite waiters");
@@ -674,7 +674,6 @@ const inviteWaiter = async (args, identity) => {
         );
         console.log('Waiter reactivated successfully:', reactivatedUser._id);
         // 生成带新 token 的邀请链接并发送邮件
-        const baseUrl = isDev ? 'https://localhost:5173/waiter-register' : 'https://admin.emenu.au/waiter-register';
         const inviteLink = `${baseUrl}?token=${newInviteToken}`;
         await sendInviteEmail(email, inviteLink);
         return reactivatedUser.toJSON();
