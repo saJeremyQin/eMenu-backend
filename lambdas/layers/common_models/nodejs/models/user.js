@@ -13,7 +13,7 @@ const UserSchema = new mongoose.Schema({
   restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant' },
   isDeleted: { type: Boolean, required: true },
   inviteToken: { type: String, default: null },
-  status: { type: String, enum: ['pending', 'active', 'disabled'] },
+  status: { type: String, enum: ['PENDING', 'ACTIVE', 'DISABLED'] },
 }, { 
   timestamps: true,
   toJSON: {
