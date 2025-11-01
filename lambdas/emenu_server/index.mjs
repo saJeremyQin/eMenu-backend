@@ -630,7 +630,11 @@ const inviteWaiter = async (args, identity) => {
   console.log('Executing inviteWaiter...');
   const cognitoId = identity.sub;
   const groups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
-  const isDev = process.env.Environment === 'dev';
+  console.log("ENVIRONMENT is", process.env.ENVIRONMENT);
+
+  const isDev = process.env.ENVIRONMENT === 'dev';
+  console.log("isDev is", isDev);
+  
   if (!groups.includes("boss")) {
     throw new Error("Only boss users can invite waiters");
   }
