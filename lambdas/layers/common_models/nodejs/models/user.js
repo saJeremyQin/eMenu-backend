@@ -11,7 +11,9 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true },
   role: { type: String, enum: ['boss', 'waiter'], required: true },
   restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant' },
-  isDeleted: { type: Boolean, required: true }
+  isDeleted: { type: Boolean, required: true },
+  inviteToken: { type: String, default: null },
+  status: { type: String, enum: ['pending', 'active', 'disabled'] },
 }, { 
   timestamps: true,
   toJSON: {

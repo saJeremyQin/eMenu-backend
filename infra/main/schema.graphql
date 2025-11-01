@@ -33,6 +33,8 @@ type User {
   isDeleted: Boolean! # 软删除标记
   inviteToken: String # 仅 waiter 用户有效
   status: String # waiter registration status: 'pending', 'active', 'disabled', etc.
+  createdAt: String # 用户创建时间（ISO 格式）
+  updatedAt: String # 用户更新时间（ISO 格式）
 }
 
 # 餐厅 Type (包含订阅和限额信息)
