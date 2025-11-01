@@ -699,7 +699,7 @@ const inviteWaiter = async (args, identity) => {
     const savedWaiter = await newWaiter.save();
     console.log('Waiter invited successfully:', savedWaiter._id);
     // 生成带token的邀请链接
-    const inviteLink = `https://admin.emenu.au/waiter-register?token=${inviteToken}`;
+    const inviteLink = `${baseUrl}?token=${inviteToken}`;
     await sendInviteEmail(email, inviteLink);
     return savedWaiter.toJSON();
   } catch (error) {
