@@ -632,7 +632,7 @@ const inviteWaiter = async (args, identity) => {
   const groups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
 
   const isDev = process.env.ENVIRONMENT === 'dev';
-  const baseUrl = isDev ? 'https://localhost:5173/waiter-register' : 'https://admin.emenu.au/waiter-register';
+  const baseUrl = isDev ? 'http://localhost:5173/waiter-register' : 'https://admin.emenu.au/waiter-register';
 
   
   if (!groups.includes("boss")) {
