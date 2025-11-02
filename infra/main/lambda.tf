@@ -213,6 +213,27 @@ resource "aws_iam_role_policy" "emenu_server_ses_access" {
   }) 
 }
 
+// Grant Cognito User Pool admin permissions required by registerWaiter
+resource "aws_iam_role_policy" "emenu_server_cognito_admin_access" {
+  name = "emenu_server_cognito_admin_access"
+  role = aws_iam_role.lambda_exec.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminUpdateUserAttributes"
+        ],
+        Resource = aws_cognito_user_pool.emenu_user_pool.arn
+      }
+    ]
+  }) 
+}
+
 resource "aws_iam_role_policy" "emenu_post_confirmation_ssm_access" {
   name = "emenu_post_confirmation_ssm_access"
   role = aws_iam_role.cognito_trigger.id
