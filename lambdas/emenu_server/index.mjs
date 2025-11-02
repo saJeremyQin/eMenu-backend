@@ -218,6 +218,8 @@ export const handler = async (event, context) => {
         return await updateRestaurantSubscriptionPlan(event.arguments, identity);
       case "inviteWaiter":
         return await inviteWaiter(event.arguments, identity);
+      case "registerWaiter":
+        return await registerWaiter(event.arguments, identity);
       case "createDishType":
         return await createDishType(event.arguments, identity);
       case "updateDishType":
@@ -852,7 +854,7 @@ const registerWaiter = async (args, identity) => {
 
   // 更新 waiter 用户
   waiter.cognitoId = cognitoId;
-  waiter.status = 'active';
+  waiter.status = 'ACTIVE';
   waiter.inviteToken = null;
   await waiter.save();
   console.log('Waiter registered and activated:', waiter._id);
