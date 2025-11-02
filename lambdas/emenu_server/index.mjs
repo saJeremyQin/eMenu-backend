@@ -190,12 +190,17 @@ export const handler = async (event, context) => {
     const field = event.fieldName;
     const identity = event.identity;
 
-    if (!identity || !identity.sub) {
-      console.error('Auth Check: No identity found or missing sub in AppSync event context.');
-      throw new Error('Authentication required.');
+    // Skip authentication check for registerWaiter (uses API Key)
+    if (field !== 'registerWaiter') {
+      if (!identity || !identity.sub) {
+        console.error('Auth Check: No identity found or missing sub in AppSync event context.');
+        throw new Error('Authentication required.');
+      }
+      console.log('Auth Check: Identity object from AppSync:', JSON.stringify(identity, null, 2));
+      console.log('Auth Check: User ID (sub):', identity.sub);
+    } else {
+      console.log('Auth Check: Skipping for registerWaiter (API Key access)');
     }
-    console.log('Auth Check: Identity object from AppSync:', JSON.stringify(identity, null, 2));
-    console.log('Auth Check: User ID (sub):', identity.sub);
 
     switch (field) {
       case "getUser":
@@ -802,6 +807,16 @@ const registerWaiter = async (args, identity) => {
   const waiter = await User.findOne({ inviteToken: token, role: 'waiter', isDeleted: false });
   if (!waiter) throw new Error('Invalid or expired token.');
   // 允许重新激活的 waiter（已有 cognitoId）继续注册/激活
+
+  // 检查餐馆 waiter 数量限制（防止绕过 invite 流程直接注册）
+  if (waiter.restaurantId) {
+    try {
+      await checkWaiterLimit(waiter.restaurantId);
+    } catch (limitErr) {
+      console.error('Waiter limit exceeded during registration:', limitErr);
+      throw new Error('Cannot register: restaurant has reached waiter limit for current subscription plan.');
+    }
+  }
 
   const userPoolId = process.env.WAITER_USER_POOL_ID;
   if (!userPoolId) throw new Error('WAITER_USER_POOL_ID is not set in environment variables.');

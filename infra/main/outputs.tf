@@ -15,6 +15,12 @@ output "cognito_user_pool_app_client_id" {
   value = aws_cognito_user_pool_client.emenu_app_client.id
 }
 
+output "appsync_api_key" {
+  description = "API Key for AppSync (for unauthenticated access)"
+  value       = aws_appsync_api_key.emenu_api_key.key
+  sensitive   = true
+}
+
 # S3 bucket for restaurant assets
 output "restaurant_assets_bucket_name" {
   description = "Name of the S3 bucket for restaurant assets"

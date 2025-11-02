@@ -1,17 +1,25 @@
 
 // Create AppSync graphql apis
 resource "aws_appsync_graphql_api" "emenu_apis" {
-  # authentication_type = "API_KEY"
   authentication_type = "AMAZON_COGNITO_USER_POOLS"
   name                = "emenu-apis"
   schema              = file("${path.module}/schema.graphql")
 
   user_pool_config {
-    # user_pool_id   = "ap-southeast-2_0a2hzDvRi"
-    user_pool_id = aws_cognito_user_pool.emenu_user_pool.id
+    user_pool_id   = aws_cognito_user_pool.emenu_user_pool.id
     aws_region     = var.aws_region
     default_action = "ALLOW"
   }
+
+  additional_authentication_provider {
+    authentication_type = "API_KEY"
+  }
+}
+
+// Create API Key for AppSync (for unauthenticated access like registerWaiter)
+resource "aws_appsync_api_key" "emenu_api_key" {
+  api_id  = aws_appsync_graphql_api.emenu_apis.id
+  expires = timeadd(timestamp(), "8760h") // Valid for 1 year (365 days * 24 hours)
 }
 
 // Configure the lambda function as a datasource for AppSync apis

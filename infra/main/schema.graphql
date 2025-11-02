@@ -181,7 +181,7 @@ type Mutation {
   
   # invite waiter, delete waiter
   inviteWaiter(email: String!): User
-  registerWaiter(token: String!, password: String!): User # waiter registration via inviteToken
+  registerWaiter(token: String!, password: String!): User @aws_api_key # waiter registration via inviteToken (API Key access)
   deleteWaiter(id: ID!): Boolean
   activateWaiter(token: String!, password: String!): Boolean
 
