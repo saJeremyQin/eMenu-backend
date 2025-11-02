@@ -37,6 +37,16 @@ type User {
   updatedAt: String # 用户更新时间（ISO 格式）
 }
 
+# Waiter registration response (API Key accessible)
+type RegisterWaiterPayload @aws_api_key {
+  id: ID!
+  cognitoId: String
+  email: String!
+  role: Role!
+  status: String!
+  createdAt: String!
+}
+
 # 餐厅 Type (包含订阅和限额信息)
 type Restaurant {
   id: ID! # Mongoose _id
@@ -181,7 +191,7 @@ type Mutation {
   
   # invite waiter, delete waiter
   inviteWaiter(email: String!): User
-  registerWaiter(token: String!, password: String!): User @aws_api_key # waiter registration via inviteToken (API Key access)
+  registerWaiter(token: String!, password: String!): RegisterWaiterPayload @aws_api_key # waiter registration via inviteToken (API Key access)
   deleteWaiter(id: ID!): Boolean
   activateWaiter(token: String!, password: String!): Boolean
 

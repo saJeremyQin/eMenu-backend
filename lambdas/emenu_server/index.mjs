@@ -873,7 +873,16 @@ const registerWaiter = async (args, identity) => {
   waiter.inviteToken = null;
   await waiter.save();
   console.log('Waiter registered and activated:', waiter._id);
-  return waiter.toJSON();
+  
+  // Return fields needed by frontend (API Key accessible via RegisterWaiterPayload)
+  return {
+    id: waiter._id.toString(),
+    cognitoId: waiter.cognitoId,
+    email: waiter.email,
+    role: waiter.role,
+    status: waiter.status,
+    createdAt: waiter.createdAt ? waiter.createdAt.toISOString() : new Date().toISOString()
+  };
 };
 
 // deleteDishType（软删除）
