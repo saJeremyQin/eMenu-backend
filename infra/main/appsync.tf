@@ -131,6 +131,19 @@ resource "aws_appsync_resolver" "list_orders_query" {
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
+// Add resolver for listWaiters query
+resource "aws_appsync_resolver" "list_waiters_query" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "listWaiters"
+  type        = "Query"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/listWaiters-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
 // ==================================================================
 // DISH TYPE MUTATION RESOLVERS
 // ==================================================================
