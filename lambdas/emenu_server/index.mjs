@@ -949,6 +949,19 @@ const registerWaiter = async (args, identity) => {
   waiter.inviteToken = null;
   await waiter.save();
   console.log('Waiter registered and activated:', waiter._id);
+    // 将 waiter._id 添加到餐厅的 waiters 数组
+    if (waiter.restaurantId) {
+      const restaurant = await Restaurant.findById(waiter.restaurantId);
+      if (restaurant) {
+        if (!restaurant.waiters) restaurant.waiters = [];
+        // 避免重复添加
+        if (!restaurant.waiters.includes(waiter._id)) {
+          restaurant.waiters.push(waiter._id);
+          await restaurant.save();
+          console.log('Waiter added to restaurant.waiters:', restaurant._id);
+        }
+      }
+    }
   
   // Return fields needed by frontend (API Key accessible via RegisterWaiterPayload)
   return {
