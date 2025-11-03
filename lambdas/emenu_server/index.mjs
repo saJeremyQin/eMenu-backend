@@ -269,6 +269,8 @@ export const handler = async (event, context) => {
         return await getUserByCognito(event.arguments, identity);
       case "getRestaurant":
         return await getRestaurant(event.arguments, identity);
+      case "listWaiters":
+        return await listWaiters(event.arguments, identity);
       case "listDishTypes":
         return await listDishTypes(event.arguments, identity);
       case "listDishes":
@@ -285,6 +287,8 @@ export const handler = async (event, context) => {
         return await inviteWaiter(event.arguments, identity);
       case "registerWaiter":
         return await registerWaiter(event.arguments, identity);
+      case "deleteWaiter":
+        return await deleteWaiter(event.arguments, identity);
       case "createDishType":
         return await createDishType(event.arguments, identity);
       case "updateDishType":
@@ -404,29 +408,54 @@ const getRestaurant = async (args, identity) => {
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
   try {
-    const restaurant = await Restaurant.findById(restaurantId).populate('waiters');
+    const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
       console.error(`Restaurant with id ${restaurantId} not found.`);
       return null;
     }
     
-    const restaurantObj = restaurant.toJSON();
-    // 确保 waiters 字段正确映射
-    if (restaurantObj.waiters) {
-      restaurantObj.waiters = restaurantObj.waiters.map(waiter => ({
-        id: waiter._id ? waiter._id.toString() : waiter.id,
-        cognitoId: waiter.cognitoId,
-        email: waiter.email,
-        role: waiter.role,
-        restaurantId: waiter.restaurantId ? waiter.restaurantId.toString() : null,
-        isDeleted: !!waiter.isDeleted,
-      }));
-    }
-    
-    return restaurantObj;
+    return restaurant.toJSON();
   } catch (err) {
     console.error(`Error fetching restaurant ${restaurantId}:`, err);
     throw new Error(`Failed to fetch restaurant: ${err.message}`);
+  }
+};
+
+// listWaiters 查询（获取当前餐厅的所有服务员）
+const listWaiters = async (args, identity) => {
+  console.log('Executing listWaiters...');
+  await requireRole(identity, ['boss']); // 只有 boss 可以查看服务员列表
+  const restaurantId = await getRestaurantIdFromIdentity(identity);
+  
+  try {
+    // 通过 populate restaurant.waiters 数组获取完整的 waiter 信息
+    const restaurant = await Restaurant.findById(restaurantId).populate({
+      path: 'waiters',
+      match: { isDeleted: false }, // 只返回未删除的 waiters
+      options: { sort: { createdAt: -1 } } // 按创建时间倒序
+    });
+    
+    if (!restaurant) {
+      throw new Error('Restaurant not found');
+    }
+    
+    const waiters = restaurant.waiters || [];
+    
+    return waiters.map(waiter => ({
+      id: waiter._id.toString(),
+      cognitoId: waiter.cognitoId,
+      email: waiter.email,
+      role: waiter.role,
+      restaurantId: waiter.restaurantId.toString(),
+      isDeleted: waiter.isDeleted,
+      inviteToken: waiter.inviteToken,
+      status: waiter.status,
+      createdAt: waiter.createdAt ? waiter.createdAt.toISOString() : null,
+      updatedAt: waiter.updatedAt ? waiter.updatedAt.toISOString() : null,
+    }));
+  } catch (err) {
+    console.error(`Error fetching waiters for restaurant ${restaurantId}:`, err);
+    throw new Error(`Failed to fetch waiters: ${err.message}`);
   }
 };
 
@@ -741,6 +770,15 @@ const inviteWaiter = async (args, identity) => {
           { new: true }
         );
         console.log('Waiter reactivated successfully:', reactivatedUser._id);
+        
+        // 将重新激活的 waiter 添加到 restaurant.waiters 数组
+        if (!restaurant.waiters) restaurant.waiters = [];
+        if (!restaurant.waiters.includes(reactivatedUser._id)) {
+          restaurant.waiters.push(reactivatedUser._id);
+          await restaurant.save();
+          console.log('Waiter added to restaurant.waiters:', restaurant._id);
+        }
+        
         // 生成带新 token 的邀请链接并发送邮件
         const inviteLink = `${baseUrl}?token=${newInviteToken}`;
         await sendInviteEmail(email, inviteLink);
@@ -765,6 +803,15 @@ const inviteWaiter = async (args, identity) => {
 
     const savedWaiter = await newWaiter.save();
     console.log('Waiter invited successfully:', savedWaiter._id);
+    
+    // 将新 waiter 添加到 restaurant.waiters 数组
+    if (!restaurant.waiters) restaurant.waiters = [];
+    if (!restaurant.waiters.includes(savedWaiter._id)) {
+      restaurant.waiters.push(savedWaiter._id);
+      await restaurant.save();
+      console.log('Waiter added to restaurant.waiters:', restaurant._id);
+    }
+    
     // 生成带token的邀请链接
     const inviteLink = `${baseUrl}?token=${inviteToken}`;
     await sendInviteEmail(email, inviteLink);
@@ -972,6 +1019,48 @@ const registerWaiter = async (args, identity) => {
     status: waiter.status,
     createdAt: waiter.createdAt ? waiter.createdAt.toISOString() : new Date().toISOString()
   };
+};
+
+// deleteWaiter（软删除服务员）
+const deleteWaiter = async (args, identity) => {
+  console.log('Executing deleteWaiter...');
+  await requireRole(identity, ['boss']); // 只有 boss 可以删除服务员
+  const restaurantId = await getRestaurantIdFromIdentity(identity);
+  const { id } = args;
+  
+  try {
+    // 查找 waiter
+    const waiter = await User.findOne({ 
+      _id: id, 
+      restaurantId: restaurantId,
+      role: 'waiter',
+      isDeleted: false 
+    });
+    
+    if (!waiter) {
+      throw new Error('Waiter not found or already deleted.');
+    }
+    
+    // 软删除 waiter
+    waiter.isDeleted = true;
+    await waiter.save();
+    console.log('Waiter soft deleted:', waiter._id);
+    
+    // 从 restaurant.waiters 数组中移除
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (restaurant && restaurant.waiters) {
+      restaurant.waiters = restaurant.waiters.filter(
+        wId => wId.toString() !== waiter._id.toString()
+      );
+      await restaurant.save();
+      console.log('Waiter removed from restaurant.waiters:', restaurant._id);
+    }
+    
+    return true;
+  } catch (err) {
+    console.error(`Error deleting waiter ${id}:`, err);
+    throw new Error(`Failed to delete waiter: ${err.message}`);
+  }
 };
 
 // deleteDishType（软删除）

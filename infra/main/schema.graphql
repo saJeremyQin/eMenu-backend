@@ -62,8 +62,8 @@ type Restaurant {
   dishTypeLimit: Int!
   dishLimit: Int!
   waiterLimit: Int!
-
-  # 关联: 仅用于查询该餐厅下的服务员列表 (Resolver 反查)
+  
+  # 关联: waiters 数组（存储 waiter 的 _id，查询时可 populate）
   waiters: [User]
 }
 
