@@ -17,6 +17,10 @@ import crypto from 'crypto';
 // SUBSCRIPTION PLAN LIMITS CONSTANTS
 // Test: CI/CD pipeline trigger - updated at 2025-10-09-v4
 // ====================================================================
+// ====================================================================
+// SUBSCRIPTION PLAN LIMITS CONSTANTS
+// Test: CI/CD pipeline trigger - updated at 2025-10-09-v4
+// ====================================================================
 const SUBSCRIPTION_LIMITS = {
   BASIC: {
     restaurants: 1,
@@ -31,6 +35,29 @@ const SUBSCRIPTION_LIMITS = {
     waiters: 20
   }
 };
+
+// ====================================================================
+// INVITE TOKEN POLICY
+// ====================================================================
+// TTL (in hours) for waiter invite tokens. After this window, the token is
+// considered expired and registration must be re-invited by boss.
+const INVITE_TOKEN_TTL_HOURS = 72; // 3 days
+
+// Helper to check invite token expiry using the user's timestamp fields.
+// We rely on updatedAt for re-invites (we set updatedAt on reactivation),
+// and createdAt for the first invite creation.
+function isInviteTokenExpired(userDoc) {
+  try {
+    const issuedAt = userDoc.updatedAt || userDoc.createdAt;
+    if (!issuedAt) return true; // defensive: treat as expired if no timestamp
+    const issued = new Date(issuedAt).getTime();
+    const now = Date.now();
+    const ttlMs = INVITE_TOKEN_TTL_HOURS * 60 * 60 * 1000;
+    return now - issued > ttlMs;
+  } catch (e) {
+    return true;
+  }
+}
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-2" });
 const sesClient = new SESClient({ region: "ap-southeast-2" });
@@ -805,7 +832,20 @@ const registerWaiter = async (args, identity) => {
 
   // 查找带有 inviteToken 的 waiter 用户
   const waiter = await User.findOne({ inviteToken: token, role: 'waiter', isDeleted: false });
-  if (!waiter) throw new Error('Invalid or expired token.');
+  if (!waiter) {
+    // token 不存在（可能已被使用或伪造）
+    throw new Error('INVITE_TOKEN_INVALID_OR_USED: Invite link is invalid or already used. Please request a new invitation.');
+  }
+  
+  // 已经激活/注册过
+  if (waiter.status === 'ACTIVE' || waiter.cognitoId) {
+    throw new Error('WAITER_ALREADY_ACTIVE: This invitation has already been used. You can sign in directly.');
+  }
+  
+  // 检查 token 过期
+  if (isInviteTokenExpired(waiter)) {
+    throw new Error(`INVITE_TOKEN_EXPIRED: Invite link expired. Please request a new invitation (valid for ${INVITE_TOKEN_TTL_HOURS} hours).`);
+  }
   // 允许重新激活的 waiter（已有 cognitoId）继续注册/激活
 
   // 检查餐馆 waiter 数量限制（防止绕过 invite 流程直接注册）
