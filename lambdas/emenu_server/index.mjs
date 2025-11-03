@@ -146,6 +146,39 @@ async function getRestaurantIdFromIdentity(identity) {
 }
 
 // ====================================================================
+// ROLE HELPERS (RBAC)
+// ====================================================================
+
+/**
+ * Get user role from identity (lowercased)
+ * @param {Object} identity - AppSync identity
+ * @returns {Promise<'boss'|'waiter'>}
+ */
+async function getUserRole(identity) {
+  const cognitoId = identity?.sub || identity?.claims?.sub;
+  if (!cognitoId) throw new Error('Cognito identity sub not found.');
+  const user = await User.findOne({ cognitoId, isDeleted: false });
+  if (!user) throw new Error('User not found');
+  const role = typeof user.role === 'string' ? user.role.toLowerCase() : user.role;
+  return role;
+}
+
+/**
+ * Ensure caller has one of allowed roles
+ * @param {Object} identity - AppSync identity
+ * @param {string[]} allowedRoles - e.g., ['boss']
+ * @returns {Promise<string>} - resolved role
+ */
+async function requireRole(identity, allowedRoles) {
+  const role = await getUserRole(identity);
+  const normalized = allowedRoles.map(r => (typeof r === 'string' ? r.toLowerCase() : r));
+  if (!normalized.includes(role)) {
+    throw new Error(`PERMISSION_DENIED: Required role: ${normalized.join(' or ')}, but you are: ${role}`);
+  }
+  return role;
+}
+
+// ====================================================================
 // SUBSCRIPTION LIMIT HELPER FUNCTIONS
 // ====================================================================
 
@@ -237,11 +270,11 @@ export const handler = async (event, context) => {
       case "getRestaurant":
         return await getRestaurant(event.arguments, identity);
       case "listDishTypes":
-        return await listDishTypes(event, identity);
+        return await listDishTypes(event.arguments, identity);
       case "listDishes":
-        return await listDishes(event, context);
+        return await listDishes(event.arguments, identity);
       case "listOrders":
-        return await listOrders(event, identity);
+        return await listOrders(event.arguments, identity);
       case "createRestaurant":
         return await createRestaurant(event.arguments, identity);
       case "updateRestaurantInfo":
@@ -398,7 +431,7 @@ const getRestaurant = async (args, identity) => {
 };
 
 // listDishTypes 查询
-const listDishTypes = async (event, identity) => {
+const listDishTypes = async (args, identity) => {
   console.log('Executing listDishTypes...');
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
@@ -416,14 +449,13 @@ const listDishTypes = async (event, identity) => {
 };
 
 // listDishes 查询，支持 dishTypeId 过滤、自动 populate dishTypeId 字段
-const listDishes = async (event, context) => {
+const listDishes = async (args, identity) => {
   console.info("Executing listDishes...");
-  const identity = event.identity;
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   console.log('restaurantId is %s', restaurantId);
 
   // 支持 dishTypeId 过滤
-  const { dishTypeId } = event.arguments || {};
+  const { dishTypeId } = args || {};
   console.log('dishTypeId inside is %s', dishTypeId);
 
   const filter = { restaurantId, isDeleted: { $ne: true } };
@@ -440,13 +472,19 @@ const listDishes = async (event, context) => {
 };
 
 // listOrders 查询
-const listOrders = async (event, identity) => {
+const listOrders = async (args, identity) => {
   console.log('Executing listOrders...');
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const { status, dateFrom, dateTo } = event.arguments || {};
+  const { status, dateFrom, dateTo } = args || {};
+  const role = await getUserRole(identity);
+  const caller = await User.findOne({ cognitoId: identity.sub });
   
   try {
     const filter = { restaurantId };
+    // Waiter can only see own orders
+    if (role === 'waiter' && caller) {
+      filter.waiterId = caller._id;
+    }
     
     if (status) {
       filter.status = status;
@@ -558,6 +596,7 @@ const updateRestaurantInfo = async (args, identity) => {
   console.log('Executing updateRestaurantInfo...');
   console.log('Args:', JSON.stringify(args, null, 2));
   console.log('Identity:', JSON.stringify(identity, null, 2));
+  await requireRole(identity, ['boss']);
   
   try {
     const restaurantId = await getRestaurantIdFromIdentity(identity);
@@ -604,6 +643,7 @@ const updateRestaurantInfo = async (args, identity) => {
 // 更新餐厅订阅计划
 const updateRestaurantSubscriptionPlan = async (args, identity) => {
   console.log('Executing updateRestaurantSubscriptionPlan...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const input = args.input;
   
@@ -662,16 +702,10 @@ const updateRestaurantSubscriptionPlan = async (args, identity) => {
 // inviteWaiter
 const inviteWaiter = async (args, identity) => {
   console.log('Executing inviteWaiter...');
+  await requireRole(identity, ['boss']);
   const cognitoId = identity.sub;
-  const groups = identity.claims && identity.claims['cognito:groups'] ? identity.claims['cognito:groups'] : [];
-
   const isDev = process.env.ENVIRONMENT === 'dev';
   const baseUrl = isDev ? 'http://localhost:5173/waiter-register' : 'https://admin.emenu.au/waiter-register';
-
-  
-  if (!groups.includes("boss")) {
-    throw new Error("Only boss users can invite waiters");
-  }
 
   // 获取 boss 的餐厅
   const restaurant = await Restaurant.findOne({ bossId: cognitoId });
@@ -748,6 +782,7 @@ const inviteWaiter = async (args, identity) => {
 // createDishType
 const createDishType = async (args, identity) => {
   console.log('Executing createDishType...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const input = args.input;
   
@@ -790,6 +825,7 @@ const createDishType = async (args, identity) => {
 // updateDishType
 const updateDishType = async (args, identity) => {
   console.log('Executing updateDishType...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { id, input } = args;
   try {
@@ -968,6 +1004,7 @@ const deleteDishType = async (args, identity) => {
 // createDish
 const createDish = async (args, identity) => {
   console.log('Executing createDish...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const input = args.input;
   
@@ -1015,6 +1052,7 @@ const createDish = async (args, identity) => {
 // updateDish
 const updateDish = async (args, identity) => {
   console.log('Executing updateDish...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { id, input } = args;
   
@@ -1064,6 +1102,7 @@ const updateDish = async (args, identity) => {
 // deleteDish（软删除）
 const deleteDish = async (args, identity) => {
   console.log('Executing deleteDish...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { id } = args;
   
@@ -1093,6 +1132,7 @@ const deleteDish = async (args, identity) => {
 // updateDishAvailability
 const updateDishAvailability = async (args, identity) => {
   console.log('Executing updateDishAvailability...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { id, isAvailable } = args;
   
@@ -1126,6 +1166,8 @@ const updateDishAvailability = async (args, identity) => {
 // placeOrder
 const placeOrder = async (args, identity) => {
   console.log('Executing placeOrder...');
+  // Only waiters can place orders (future: extend to 'diner' when supported)
+  await requireRole(identity, ['waiter']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const cognitoId = identity.sub;
   const input = args.input;
@@ -1197,6 +1239,7 @@ const placeOrder = async (args, identity) => {
 // checkoutOrder
 const checkoutOrder = async (args, identity) => {
   console.log('Executing checkoutOrder...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { orderId } = args;
   
@@ -1231,6 +1274,7 @@ const checkoutOrder = async (args, identity) => {
 // updateOrderStatus
 const updateOrderStatus = async (args, identity) => {
   console.log('Executing updateOrderStatus...');
+  await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { orderId, status } = args;
   
