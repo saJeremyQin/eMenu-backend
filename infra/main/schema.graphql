@@ -67,7 +67,7 @@ type Restaurant {
   waiters: [User]
 }
 
-# 菜品分类 Type
+# Dish Type
 type DishType {
   id: ID! # Mongoose _id
   restaurantId: ID!
