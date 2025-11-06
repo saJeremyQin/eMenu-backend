@@ -11,6 +11,7 @@
  */
 import * as dishTypeResolvers from './dishType.js';
 import * as dishResolvers from './dish.js';
+import * as restaurantResolvers from './restaurant.js';
 
 // ====================================================================
 // QUERY RESOLVERS
@@ -18,12 +19,11 @@ import * as dishResolvers from './dish.js';
 const Query = {
   // DishType queries
   listDishTypes: dishTypeResolvers.listDishTypes,
-  
   // Dish queries
   listDishes: dishResolvers.listDishes,
-  
-  // 未来扩展：restaurant, user, waiter, order queries
-  // 目前这些 resolver 仍在 index.mjs 中
+  // Restaurant queries
+  getRestaurant: restaurantResolvers.getRestaurant,
+  // 未来扩展：user, waiter, order queries
 };
 
 // ====================================================================
@@ -34,15 +34,16 @@ const Mutation = {
   createDishType: dishTypeResolvers.createDishType,
   updateDishType: dishTypeResolvers.updateDishType,
   deleteDishType: dishTypeResolvers.deleteDishType,
-  
   // Dish mutations
   createDish: dishResolvers.createDish,
   updateDish: dishResolvers.updateDish,
   deleteDish: dishResolvers.deleteDish,
   updateDishAvailability: dishResolvers.updateDishAvailability,
-  
-  // 未来扩展：restaurant, user, waiter, order mutations
-  // 目前这些 resolver 仍在 index.mjs 中
+  // Restaurant mutations
+  createRestaurant: restaurantResolvers.createRestaurant,
+  updateRestaurantInfo: restaurantResolvers.updateRestaurantInfo,
+  updateRestaurantSubscriptionPlan: restaurantResolvers.updateRestaurantSubscriptionPlan,
+  // 未来扩展：user, waiter, order mutations
 };
 
 // ====================================================================

@@ -284,7 +284,7 @@ export const handler = async (event, context) => {
       case "getUserByCognito":
         return await getUserByCognito(event.arguments, identity);
       case "getRestaurant":
-        return await getRestaurant(event.arguments, identity);
+        return await newResolvers.Query.getRestaurant(event.arguments, identity);
       case "listWaiters":
         return await listWaiters(event.arguments, identity);
       
@@ -317,11 +317,11 @@ export const handler = async (event, context) => {
       case "listOrders":
         return await listOrders(event.arguments, identity);
       case "createRestaurant":
-        return await createRestaurant(event.arguments, identity);
+        return await newResolvers.Mutation.createRestaurant(event.arguments, identity);
       case "updateRestaurantInfo":
-        return await updateRestaurantInfo(event.arguments, identity);
+        return await newResolvers.Mutation.updateRestaurantInfo(event.arguments, identity);
       case "updateRestaurantSubscriptionPlan":
-        return await updateRestaurantSubscriptionPlan(event.arguments, identity);
+        return await newResolvers.Mutation.updateRestaurantSubscriptionPlan(event.arguments, identity);
       case "inviteWaiter":
         return await inviteWaiter(event.arguments, identity);
       case "registerWaiter":
