@@ -67,30 +67,35 @@ type Restaurant {
   waiters: [User]
 }
 
-# Dish Type
+# DishType Type
 type DishType {
-  id: ID! # Mongoose _id
+  id: ID!                  # Mongoose _id
   restaurantId: ID!
   name: String!
-  alias: String # 别名/副标题
-  sortOrder: Int # 排序字段 (UI 控制)
-  isDeleted: Boolean! # 软删除标记
+  alias: String            # Alias/Sub-title
+  sortOrder: Int           # Display order (for UI control)
+  isDeleted: Boolean!      # Data control (soft delete)
+  isActive: Boolean!       # Business control (active/inactive)
+  createdAt: String!
+  updatedAt: String!
 }
 
-# 菜品详情 Type
+# Dish Type
 type Dish {
-  id: ID! # Mongoose _id
+  id: ID!                  # Mongoose _id
   restaurantId: ID!
-  dishTypeId: ID! # 内部关联字段
   name: String!
-  price: Int! # 使用 Number 存储价格, by cents
-  image: String
-  description: String
-  isAvailable: Boolean! # 是否在售 (App端控制)
-  isDeleted: Boolean! # 软删除标记
+  price: Int!              # By cents
+  imageUrl: String
+  description: String      # Dish description
+  sortOrder: Int           # Display order within dishType (for menu layout)
+  isAvailable: Boolean!    # Business control: availability to customers
+  isDeleted: Boolean!      # Data control: soft delete (preserves historical orders)
+
+  createdAt: String!
+  updatedAt: String!
   
-  # 嵌套: 允许前端在查询菜品时，一并获取其分类信息
-  dishType: DishType 
+  dishType: DishType!      # Relationship: DishType this dish belongs to
 }
 
 # 订单行项目 Type (嵌入在 Order 中)
@@ -147,12 +152,13 @@ input DishTypeInput {
 }
 
 input DishInput {
-  dishTypeId: ID! # 必须指定分类
+  dishTypeId: ID!          # 必须指定分类
   name: String!
   price: Int!
   image: String
   description: String
-  isAvailable: Boolean # 默认为 true
+  sortOrder: Int           # 可选，默认追加到末尾
+  isAvailable: Boolean     # 默认为 true
 }
 
 input OrderItemInput {

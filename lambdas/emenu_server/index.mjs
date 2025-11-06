@@ -12,6 +12,11 @@ import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import crypto from 'crypto';
 
+// ====================================================================
+// NEW MODULAR RESOLVERS (Progressive Refactoring)
+// ====================================================================
+import { resolvers as newResolvers } from './resolvers/index.js';
+
 
 // ====================================================================
 // SUBSCRIPTION PLAN LIMITS CONSTANTS
@@ -271,10 +276,33 @@ export const handler = async (event, context) => {
         return await getRestaurant(event.arguments, identity);
       case "listWaiters":
         return await listWaiters(event.arguments, identity);
+      
+      // ====================================================================
+      // NEW MODULAR RESOLVERS: DishType & Dish
+      // ====================================================================
       case "listDishTypes":
-        return await listDishTypes(event.arguments, identity);
+        return await newResolvers.Query.listDishTypes(event.arguments, identity);
+      case "createDishType":
+        return await newResolvers.Mutation.createDishType(event.arguments, identity);
+      case "updateDishType":
+        return await newResolvers.Mutation.updateDishType(event.arguments, identity);
+      case "deleteDishType":
+        return await newResolvers.Mutation.deleteDishType(event.arguments, identity);
       case "listDishes":
-        return await listDishes(event.arguments, identity);
+        return await newResolvers.Query.listDishes(event.arguments, identity);
+      case "createDish":
+        return await newResolvers.Mutation.createDish(event.arguments, identity);
+      case "updateDish":
+        return await newResolvers.Mutation.updateDish(event.arguments, identity);
+      case "deleteDish":
+        return await newResolvers.Mutation.deleteDish(event.arguments, identity);
+      case "updateDishAvailability":
+        return await newResolvers.Mutation.updateDishAvailability(event.arguments, identity);
+      
+      // ====================================================================
+      // EXISTING MONOLITHIC RESOLVERS: Restaurant, User, Waiter, Order
+      // (To be migrated in future iterations)
+      // ====================================================================
       case "listOrders":
         return await listOrders(event.arguments, identity);
       case "createRestaurant":
@@ -289,20 +317,6 @@ export const handler = async (event, context) => {
         return await registerWaiter(event.arguments, identity);
       case "deleteWaiter":
         return await deleteWaiter(event.arguments, identity);
-      case "createDishType":
-        return await createDishType(event.arguments, identity);
-      case "updateDishType":
-        return await updateDishType(event.arguments, identity);
-      case "deleteDishType":
-        return await deleteDishType(event.arguments, identity);
-      case "createDish":
-        return await createDish(event.arguments, identity);
-      case "updateDish":
-        return await updateDish(event.arguments, identity);
-      case "deleteDish":
-        return await deleteDish(event.arguments, identity);
-      case "updateDishAvailability":
-        return await updateDishAvailability(event.arguments, identity);
       case "placeOrder":
         return await placeOrder(event.arguments, identity);
       case "checkoutOrder":
@@ -458,6 +472,14 @@ const listWaiters = async (args, identity) => {
     throw new Error(`Failed to fetch waiters: ${err.message}`);
   }
 };
+
+// ====================================================================
+// LEGACY DISH & DISHTYPE RESOLVERS (DEPRECATED - 已迁移到模块化结构)
+// ====================================================================
+// 以下函数已迁移到 resolvers/dishType.js 和 resolvers/dish.js
+// 保留作为参考实现，待验证稳定后删除
+// 详见: REFACTORING_PROGRESS.md
+// ====================================================================
 
 // listDishTypes 查询
 const listDishTypes = async (args, identity) => {
