@@ -267,6 +267,17 @@ export const handler = async (event, context) => {
       console.log('Auth Check: Skipping for registerWaiter (API Key access)');
     }
 
+    // Handle field resolvers (e.g., Dish.dishType)
+    if (event.typeName === 'Dish' && field === 'dishType') {
+      try {
+        console.log('FieldResolver: Dish.dishType invoked for parent dish:', JSON.stringify(event.source, null, 2));
+        return await newResolvers.Dish.dishType(event.source);
+      } catch (e) {
+        console.error('FieldResolver Error: Dish.dishType failed:', e);
+        throw e;
+      }
+    }
+
     switch (field) {
       case "getUser":
         return await getUser(event.arguments, identity);

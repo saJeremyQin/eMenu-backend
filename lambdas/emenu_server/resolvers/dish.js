@@ -200,6 +200,11 @@ export async function updateDishAvailability(args, identity) {
  * - 如果找不到有效的 DishType，抛出错误（因为 schema 定义为非空）
  */
 export async function resolveDishType(parent) {
+  console.log('Resolver: resolveDishType start', {
+    dishId: parent?._id?.toString?.() || parent?._id,
+    dishTypeId: parent?.dishTypeId,
+    restaurantId: parent?.restaurantId
+  });
   // parent 是 Dish 对象，包含 dishTypeId 和 restaurantId
   const dishType = await DishType.findOne({
     _id: parent.dishTypeId,
