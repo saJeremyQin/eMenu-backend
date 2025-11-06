@@ -14,6 +14,7 @@ import * as dishResolvers from './dish.js';
 import * as restaurantResolvers from './restaurant.js';
 import * as userResolvers from './user.js';
 import * as waiterResolvers from './waiter.js';
+import * as orderResolvers from './order.js';
 
 // ====================================================================
 // QUERY RESOLVERS
@@ -30,7 +31,8 @@ const Query = {
   getUserByCognito: userResolvers.getUserByCognito,
   // Waiter queries
   listWaiters: waiterResolvers.listWaiters,
-  // 未来扩展：user, waiter, order queries
+  // Order queries
+  listOrders: orderResolvers.listOrders,
 };
 
 // ====================================================================
@@ -54,7 +56,10 @@ const Mutation = {
   inviteWaiter: waiterResolvers.inviteWaiter,
   registerWaiter: waiterResolvers.registerWaiter,
   deleteWaiter: waiterResolvers.deleteWaiter,
-  // 未来扩展：user, waiter, order mutations
+  // Order mutations
+  placeOrder: orderResolvers.placeOrder,
+  checkoutOrder: orderResolvers.checkoutOrder,
+  updateOrderStatus: orderResolvers.updateOrderStatus,
 };
 
 // ====================================================================

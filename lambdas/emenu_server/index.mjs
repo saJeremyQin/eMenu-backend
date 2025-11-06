@@ -315,7 +315,7 @@ export const handler = async (event, context) => {
       // (To be migrated in future iterations)
       // ====================================================================
       case "listOrders":
-        return await listOrders(event.arguments, identity);
+        return await newResolvers.Query.listOrders(event.arguments, identity);
       case "createRestaurant":
         return await newResolvers.Mutation.createRestaurant(event.arguments, identity);
       case "updateRestaurantInfo":
@@ -329,11 +329,11 @@ export const handler = async (event, context) => {
       case "deleteWaiter":
         return await newResolvers.Mutation.deleteWaiter(event.arguments, identity);
       case "placeOrder":
-        return await placeOrder(event.arguments, identity);
+        return await newResolvers.Mutation.placeOrder(event.arguments, identity);
       case "checkoutOrder":
-        return await checkoutOrder(event.arguments, identity);
+        return await newResolvers.Mutation.checkoutOrder(event.arguments, identity);
       case "updateOrderStatus":
-        return await updateOrderStatus(event.arguments, identity);
+        return await newResolvers.Mutation.updateOrderStatus(event.arguments, identity);
       default:
         console.error(`Unknown field: ${field}`);
         throw new Error(`Unknown field: ${field}`);
