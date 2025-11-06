@@ -95,7 +95,7 @@ type Dish {
   createdAt: String!
   updatedAt: String!
   
-  dishType: DishType!      # Relationship: DishType this dish belongs to
+  dishType: DishType!      # Relationship: DishType this dish belongs to (REQUIRED - every dish must have a valid category)
 }
 
 # 订单行项目 Type (嵌入在 Order 中)

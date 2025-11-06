@@ -195,10 +195,22 @@ export async function updateDishAvailability(args, identity) {
 /**
  * Dish.dishType Field Resolver
  * - 从 dishTypeId 填充完整的 DishType 对象
- * - 前端可以通过 GraphQL 查询获取嵌套的分类信息
+ * - 验证 restaurantId 匹配，防止跨餐厅数据泄露
+ * - 排除已删除的 DishType
+ * - 如果找不到有效的 DishType，抛出错误（因为 schema 定义为非空）
  */
 export async function resolveDishType(parent) {
-  // parent 是 Dish 对象，包含 dishTypeId
-  const dishType = await DishType.findById(parent.dishTypeId);
+  // parent 是 Dish 对象，包含 dishTypeId 和 restaurantId
+  const dishType = await DishType.findOne({
+    _id: parent.dishTypeId,
+    restaurantId: parent.restaurantId, // 必须属于同一餐厅
+    isDeleted: false                   // 排除已软删除的分类
+  });
+  
+  if (!dishType) {
+    console.error(`CRITICAL: DishType not found for Dish ${parent._id}: dishTypeId=${parent.dishTypeId}, restaurantId=${parent.restaurantId}`);
+    throw new Error(`Invalid dish category: Dish "${parent.name}" (${parent._id}) references a non-existent or deleted DishType. Please fix data inconsistency.`);
+  }
+  
   return dishType;
 }
