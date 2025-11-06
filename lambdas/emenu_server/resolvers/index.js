@@ -12,6 +12,8 @@
 import * as dishTypeResolvers from './dishType.js';
 import * as dishResolvers from './dish.js';
 import * as restaurantResolvers from './restaurant.js';
+import * as userResolvers from './user.js';
+import * as waiterResolvers from './waiter.js';
 
 // ====================================================================
 // QUERY RESOLVERS
@@ -23,6 +25,11 @@ const Query = {
   listDishes: dishResolvers.listDishes,
   // Restaurant queries
   getRestaurant: restaurantResolvers.getRestaurant,
+  // User queries
+  getUser: userResolvers.getUser,
+  getUserByCognito: userResolvers.getUserByCognito,
+  // Waiter queries
+  listWaiters: waiterResolvers.listWaiters,
   // 未来扩展：user, waiter, order queries
 };
 
@@ -43,6 +50,10 @@ const Mutation = {
   createRestaurant: restaurantResolvers.createRestaurant,
   updateRestaurantInfo: restaurantResolvers.updateRestaurantInfo,
   updateRestaurantSubscriptionPlan: restaurantResolvers.updateRestaurantSubscriptionPlan,
+  // Waiter mutations
+  inviteWaiter: waiterResolvers.inviteWaiter,
+  registerWaiter: waiterResolvers.registerWaiter,
+  deleteWaiter: waiterResolvers.deleteWaiter,
   // 未来扩展：user, waiter, order mutations
 };
 

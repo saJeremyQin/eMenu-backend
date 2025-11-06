@@ -280,13 +280,13 @@ export const handler = async (event, context) => {
 
     switch (field) {
       case "getUser":
-        return await getUser(event.arguments, identity);
+        return await newResolvers.Query.getUser(event.arguments, identity);
       case "getUserByCognito":
-        return await getUserByCognito(event.arguments, identity);
+        return await newResolvers.Query.getUserByCognito(event.arguments, identity);
       case "getRestaurant":
         return await newResolvers.Query.getRestaurant(event.arguments, identity);
       case "listWaiters":
-        return await listWaiters(event.arguments, identity);
+        return await newResolvers.Query.listWaiters(event.arguments, identity);
       
       // ====================================================================
       // NEW MODULAR RESOLVERS: DishType & Dish
@@ -323,11 +323,11 @@ export const handler = async (event, context) => {
       case "updateRestaurantSubscriptionPlan":
         return await newResolvers.Mutation.updateRestaurantSubscriptionPlan(event.arguments, identity);
       case "inviteWaiter":
-        return await inviteWaiter(event.arguments, identity);
+        return await newResolvers.Mutation.inviteWaiter(event.arguments, identity);
       case "registerWaiter":
-        return await registerWaiter(event.arguments, identity);
+        return await newResolvers.Mutation.registerWaiter(event.arguments, identity);
       case "deleteWaiter":
-        return await deleteWaiter(event.arguments, identity);
+        return await newResolvers.Mutation.deleteWaiter(event.arguments, identity);
       case "placeOrder":
         return await placeOrder(event.arguments, identity);
       case "checkoutOrder":
