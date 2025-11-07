@@ -129,3 +129,21 @@ export async function deleteDishType(args, identity) {
     message: 'DishType deleted successfully'
   };
 }
+
+// lambdas/emenu_server/resolvers/dishType.js
+export async function toggleDishTypeStatus(args, identity) {
+  await requireBoss(identity);
+  const restaurantId = await getRestaurantIdFromIdentity(identity);
+  
+  const { id, isActive } = args;
+  
+  const dishType = await DishType.findOneAndUpdate(
+    { _id: id, restaurantId, isDeleted: false },
+    { isActive, updatedAt: new Date() },
+    { new: true }
+  );
+  
+  if (!dishType) throw new Error('DishType not found');
+  
+  return dishType;
+}

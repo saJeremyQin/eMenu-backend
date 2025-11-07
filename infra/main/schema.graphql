@@ -205,6 +205,7 @@ type Mutation {
   createDishType(input: DishTypeInput!): DishType
   updateDishType(id: ID!, input: DishTypeInput!): DishType
   deleteDishType(id: ID!): DishType # 软删除，返回更新后的对象
+  toggleDishTypeStatus(id: ID!, isActive: Boolean!): DishType # 切换分类状态
   
   createDish(input: DishInput!): Dish
   updateDish(id: ID!, input: DishInput!): Dish

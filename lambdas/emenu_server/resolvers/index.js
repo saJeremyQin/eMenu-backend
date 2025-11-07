@@ -43,6 +43,7 @@ const Mutation = {
   createDishType: dishTypeResolvers.createDishType,
   updateDishType: dishTypeResolvers.updateDishType,
   deleteDishType: dishTypeResolvers.deleteDishType,
+  toggleDishTypeStatus: dishTypeResolvers.toggleDishTypeStatus,
   // Dish mutations
   createDish: dishResolvers.createDish,
   updateDish: dishResolvers.updateDish,

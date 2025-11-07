@@ -187,6 +187,19 @@ resource "aws_appsync_resolver" "delete_dish_type_mutation" {
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
+// Add resolver for toggleDishTypeStatus mutation
+resource "aws_appsync_resolver" "toggle_dish_type_status_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "toggleDishTypeStatus"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/toggleDishTypeStatus-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
 // ==================================================================
 // DISH MUTATION RESOLVERS
 // ==================================================================
