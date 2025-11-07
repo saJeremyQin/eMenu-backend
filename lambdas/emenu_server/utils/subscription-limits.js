@@ -26,7 +26,7 @@ export async function checkDishTypeLimit(restaurantId) {
   const limit = SUBSCRIPTION_LIMITS[restaurant.subscriptionPlan].dishTypes;
   
   if (currentCount >= limit) {
-    throw new Error(`已达到${restaurant.subscriptionPlan}版本菜品分类数量限制（${limit}个）`);
+    throw new Error(`You have reached the ${restaurant.subscriptionPlan} version dish type limit (${limit} items)`);
   }
   
   return { currentCount, limit, remaining: limit - currentCount };
@@ -50,7 +50,7 @@ export async function checkDishLimit(restaurantId) {
   const limit = SUBSCRIPTION_LIMITS[restaurant.subscriptionPlan].dishes;
   
   if (currentCount >= limit) {
-    throw new Error(`已达到${restaurant.subscriptionPlan}版本菜品数量限制（${limit}个）`);
+    throw new Error(`You have reached the ${restaurant.subscriptionPlan} version dish limit (${limit} items)`);
   }
   
   return { currentCount, limit, remaining: limit - currentCount };
@@ -75,7 +75,7 @@ export async function checkWaiterLimit(restaurantId) {
   const limit = SUBSCRIPTION_LIMITS[restaurant.subscriptionPlan].waiters;
   
   if (currentCount >= limit) {
-    throw new Error(`已达到${restaurant.subscriptionPlan}版本服务员数量限制（${limit}个）`);
+    throw new Error(`You have reached the ${restaurant.subscriptionPlan} version waiter limit (${limit} items)`);
   }
   
   return { currentCount, limit, remaining: limit - currentCount };
