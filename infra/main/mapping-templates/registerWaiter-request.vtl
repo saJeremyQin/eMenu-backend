@@ -2,9 +2,12 @@
   "version": "2018-05-29",
   "operation": "Invoke",
   "payload": {
-    "typeName": $util.toJson($ctx.info.typeName),
-    "fieldName": $util.toJson($ctx.info.fieldName),
-    "arguments": $util.toJson($ctx.arguments),
-    "identity": $util.toJson($ctx.identity)
+    "typeName": "Mutation",
+    "fieldName": "registerWaiter",
+    "arguments": $utils.toJson($context.arguments),
+    "identity": $utils.toJson($context.identity),
+    "source": $utils.toJson($context.source),
+    "request": $utils.toJson($context.request),
+    "prev": $utils.toJson($context.prev)
   }
 }
