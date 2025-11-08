@@ -41,9 +41,10 @@ export async function createRestaurant(args, identity) {
     console.error('Error checking for existing restaurant:', dbFindError);
     throw new Error(`Database query error: ${dbFindError.message}`);
   }
-  const input = args.input;
+  const input = args?.input || args;
   console.log('Input for new restaurant:', JSON.stringify(input, null, 2));
-  if (!input.name || !input.address) {
+  const name = (input.name || '').trim();
+  if (!name || !input.address) {
     console.error('Validation Error: Missing required fields for restaurant creation.');
     throw new Error('Restaurant name and address are required.');
   }
@@ -52,7 +53,7 @@ export async function createRestaurant(args, identity) {
   const expiryDate = new Date(now.getTime());
   expiryDate.setMonth(expiryDate.getMonth() + 3);
   const restaurant = new Restaurant({
-    name: input.name,
+    name,
     image: input.image || null,
     address: input.address || null,
     phone: input.phone || null,
@@ -97,13 +98,13 @@ export async function updateRestaurantInfo(args, identity) {
   try {
     const restaurantId = await getRestaurantIdFromIdentity(identity);
     console.log('Restaurant ID:', restaurantId);
-    const input = args.input;
+    const input = args?.input || args;
     console.log('Input data:', JSON.stringify(input, null, 2));
     if (!restaurantId) {
       throw new Error('Restaurant not found for this user');
     }
     const updateData = {};
-    if (input.name !== undefined) updateData.name = input.name;
+      if (input.name !== undefined) updateData.name = (input.name || '').trim();
     if (input.image !== undefined) updateData.image = input.image;
     if (input.address !== undefined) updateData.address = input.address;
     if (input.phone !== undefined) updateData.phone = input.phone;
@@ -133,7 +134,7 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
   console.log('Executing updateRestaurantSubscriptionPlan...');
   await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const input = args.input;
+  const input = args?.input || args;
   if (!restaurantId) {
     throw new Error('Restaurant not found for this user');
   }
