@@ -111,23 +111,17 @@ export async function deleteDishType(args, identity) {
   
   const { id } = args;
   
-  const dishType = await DishType.findOne({
-    _id: id,
-    restaurantId,
-    isDeleted: false
-  });
-  
+  // Soft delete and return document after update (return Document so schema.toJSON runs)
+  const dishType = await DishType.findOneAndUpdate(
+    { _id: id, restaurantId, isDeleted: false },
+    { isDeleted: true, isActive: false, updatedAt: new Date() },
+    { new: true }
+  );
+
   if (!dishType) {
     throw new Error('DishType not found or already deleted');
   }
-  
-  // 使用模型的 softDelete 实例方法
-  await dishType.softDelete();
-  
-  return {
-    success: true,
-    message: 'DishType deleted successfully'
-  };
+  return dishType;
 }
 
 // lambdas/emenu_server/resolvers/dishType.js
