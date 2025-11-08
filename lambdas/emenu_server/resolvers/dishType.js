@@ -43,7 +43,14 @@ export async function createDishType(args, identity) {
   // 检查是否超过订阅限制
   await checkDishTypeLimit(restaurantId);
   
-  const { name, alias, sortOrder, isActive } = args;
+  const input = args?.input || args;
+  const name = (input.name || '').trim();
+  const alias = input.alias;
+  const { sortOrder, isActive } = input;
+  
+  if (!name) {
+    throw new Error('name is required');
+  }
   
   // 如果没有提供 sortOrder，使用当前最大值 + 1
   let finalSortOrder = sortOrder;
@@ -63,7 +70,11 @@ export async function createDishType(args, identity) {
     isDeleted: false
   });
   
-  await dishType.save();
+  try {
+    await dishType.save();
+  } catch (err) {
+    throw new Error(`Failed to create DishType: ${err.message}`);
+  }
   return dishType;
 }
 
@@ -77,8 +88,10 @@ export async function updateDishType(args, identity) {
   await requireBoss(identity);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
-  const { id, name, alias, sortOrder, isActive } = args;
-  
+  const id = args.id || (args.input && args.input.id);
+  const input = args.input || args;
+  const { name, alias, sortOrder, isActive } = input;  
+
   const dishType = await DishType.findOne({
     _id: id,
     restaurantId,
@@ -90,7 +103,7 @@ export async function updateDishType(args, identity) {
   }
   
   // 更新允许的字段
-  if (name !== undefined) dishType.name = name;
+  if (name !== undefined) dishType.name = (name || '').trim();
   if (alias !== undefined) dishType.alias = alias;
   if (sortOrder !== undefined) dishType.sortOrder = sortOrder;
   if (isActive !== undefined) dishType.isActive = isActive;
