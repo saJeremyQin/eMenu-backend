@@ -55,7 +55,7 @@ export async function createDish(args, identity) {
   // 检查是否超过订阅限制
   await checkDishLimit(restaurantId);
   
-  const { dishTypeId, name, price, description, image, sortOrder, isAvailable } = args;
+  const { dishTypeId, name, price, description, image, sortOrder, isActive } = args;
   
   // 验证 dishTypeId 存在且属于当前餐厅
   const dishType = await DishType.findOne({
@@ -89,7 +89,7 @@ export async function createDish(args, identity) {
     description: description || '',
     image: image || '',
     sortOrder: finalSortOrder,
-    isAvailable: isAvailable !== undefined ? isAvailable : true, // 默认上架
+  isActive: isActive !== undefined ? isActive : true, // 默认上架（激活）
     isDeleted: false
   });
   
@@ -134,7 +134,7 @@ export async function updateDish(args, identity) {
 /**
  * 删除菜品（软删除）
  * - 仅 boss 可操作
- * - 使用 softDelete() 方法：设置 isDeleted=true, isAvailable=false
+ * - 使用 softDelete() 方法：设置 isDeleted=true, isActive=false
  */
 export async function deleteDish(args, identity) {
   await requireBoss(identity);
@@ -164,13 +164,13 @@ export async function deleteDish(args, identity) {
 /**
  * 更新菜品上架状态
  * - 仅 boss 可操作
- * - 快捷方式：切换 isAvailable 状态（上架/下架）
+ * - 快捷方式：切换 isActive 状态（上架/下架）
  */
-export async function updateDishAvailability(args, identity) {
+export async function toggleDishStatus(args, identity) {
   await requireBoss(identity);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
-  const { id, isAvailable } = args;
+  const { id, isActive } = args;
   
   const dish = await Dish.findOne({
     _id: id,
@@ -182,7 +182,7 @@ export async function updateDishAvailability(args, identity) {
     throw new Error('Dish not found or already deleted');
   }
   
-  dish.isAvailable = isAvailable;
+  dish.isActive = isActive;
   await dish.save();
   
   return dish;

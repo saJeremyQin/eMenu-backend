@@ -33,7 +33,7 @@
 ### 5. Dish Resolvers ✅
 **文件**: `resolvers/dish.js`
 - Query: `listDishes` (支持 dishTypeId 过滤)
-- Mutation: `createDish`, `updateDish`, `deleteDish`, `updateDishAvailability`
+- Mutation: `createDish`, `updateDish`, `deleteDish`, `toggleDishStatus`
 - Field Resolver: `Dish.dishType` (填充完整的 DishType 对象)
 
 **功能特性**:
@@ -167,7 +167,7 @@ mutation CreateDish {
     name: "红烧牛肉面"
     price: 15.50
     description: "经典川味"
-    isAvailable: true
+  isActive: true
   }) {
     id
     name

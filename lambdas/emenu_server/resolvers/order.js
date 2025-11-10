@@ -94,7 +94,7 @@ export async function placeOrder(args, identity) {
         _id: item.dishId, 
         restaurantId, 
         isDeleted: { $ne: true },
-        isAvailable: true
+        isActive: true
       });
       
       if (!dish) {

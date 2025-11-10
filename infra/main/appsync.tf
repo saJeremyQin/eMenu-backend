@@ -243,14 +243,14 @@ resource "aws_appsync_resolver" "delete_dish_mutation" {
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
-// Add resolver for updateDishAvailability mutation
-resource "aws_appsync_resolver" "update_dish_availability_mutation" {
+// Add resolver for toggleDishStatus mutation
+resource "aws_appsync_resolver" "toggle_dish_status_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id
-  field       = "updateDishAvailability"
+  field       = "toggleDishStatus"
   type        = "Mutation"
   data_source = aws_appsync_datasource.emenu_datasource.name
 
-  request_template  = file("${path.module}/mapping-templates/updateDishAvailability-request.vtl")
+    request_template  = file("${path.module}/mapping-templates/toggleDishStatus-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
   depends_on = [aws_appsync_graphql_api.emenu_apis]

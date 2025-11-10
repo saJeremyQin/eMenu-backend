@@ -17,7 +17,7 @@
 - `createDish` → `resolvers/dish.js`
 - `updateDish` → `resolvers/dish.js`
 - `deleteDish` → `resolvers/dish.js`
-- `updateDishAvailability` → `resolvers/dish.js`
+- `toggleDishStatus` → `resolvers/dish.js`
 
 **Field Resolver:**
 - `Dish.dishType` → `resolvers/dish.js`

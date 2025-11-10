@@ -28,7 +28,7 @@
 - `createDish` - 创建菜品
 - `updateDish` - 更新菜品
 - `deleteDish` - 删除菜品（软删除）
-- `updateDishAvailability` - 更新菜品可用性
+- `toggleDishStatus` - 更新菜品可用性
 
 **订单管理:**
 - `placeOrder` - 下订单
@@ -103,7 +103,7 @@ eMenu-backend/
 │       ├── createDish-request.vtl
 │       ├── updateDish-request.vtl
 │       ├── deleteDish-request.vtl
-│       ├── updateDishAvailability-request.vtl
+│       ├── toggleDishStatus-request.vtl
 │       ├── placeOrder-request.vtl
 │       ├── checkoutOrder-request.vtl
 │       └── updateOrderStatus-request.vtl

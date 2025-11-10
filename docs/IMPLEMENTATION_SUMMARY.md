@@ -25,7 +25,7 @@
 10. **createDish(input: DishInput!)** - 创建菜品
 11. **updateDish(id: ID!, input: DishInput!)** - 更新菜品
 12. **deleteDish(id: ID!)** - 软删除菜品
-13. **updateDishAvailability(id: ID!, isAvailable: Boolean!)** - 更新菜品可用状态
+13. **toggleDishStatus(id: ID!, isActive: Boolean!)** - 更新菜品激活状态（上架/下架）
 
 #### 订单管理
 14. **placeOrder(input: OrderInput!)** - 下单

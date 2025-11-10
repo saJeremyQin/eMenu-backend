@@ -159,7 +159,7 @@ mutation CreateDish {
     name: "红烧牛肉面"
     price: 15.50
     description: "经典川味"
-    isAvailable: true
+  isActive: true
   }) {
     id
     name

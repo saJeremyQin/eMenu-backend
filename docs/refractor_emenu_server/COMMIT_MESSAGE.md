@@ -65,7 +65,7 @@ lambdas/emenu_server/
 - createDish (Mutation) - Boss only, 订阅限制检查, DishType 验证
 - updateDish (Mutation) - Boss only
 - deleteDish (Mutation) - Boss only, 软删除
-- updateDishAvailability (Mutation) - Boss only, 快捷上架/下架
+- toggleDishStatus (Mutation) - Boss only, 快捷上架/下架
 - Dish.dishType (Field Resolver) - 填充完整的 DishType 对象
 
 ### 安全性增强
@@ -181,7 +181,7 @@ feat(backend): 实现 Dish CRUD resolvers + Field Resolver
   - createDish (Mutation)
   - updateDish (Mutation)
   - deleteDish (Mutation)
-  - updateDishAvailability (Mutation)
+  - toggleDishStatus (Mutation)
   - resolveDishType (Field Resolver)
 - 更新 models/dish.js - 新增 sortOrder, 优化索引
 - 移除冗余单字段索引，使用复合索引

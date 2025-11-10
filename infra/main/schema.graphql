@@ -89,7 +89,7 @@ type Dish {
   imageUrl: String
   description: String      # Dish description
   sortOrder: Int           # Display order within dishType (for menu layout)
-  isAvailable: Boolean!    # Business control: availability to customers
+  isActive: Boolean!    # Business control: active/available to customers
   isDeleted: Boolean!      # Data control: soft delete (preserves historical orders)
 
   createdAt: String!
@@ -158,7 +158,7 @@ input DishInput {
   image: String
   description: String
   sortOrder: Int           # 可选，默认追加到末尾
-  isAvailable: Boolean     # 默认为 true
+  isActive: Boolean     # 默认为 true
 }
 
 input OrderItemInput {
@@ -210,7 +210,7 @@ type Mutation {
   createDish(input: DishInput!): Dish
   updateDish(id: ID!, input: DishInput!): Dish
   deleteDish(id: ID!): Dish # 软删除，返回更新后的对象
-  updateDishAvailability(id: ID!, isAvailable: Boolean!): Dish
+  toggleDishStatus(id: ID!, isActive: Boolean!): Dish # Switch dish availability status
 
   # 订单操作
   placeOrder(input: OrderInput!): Order

@@ -34,10 +34,10 @@ const DishSchema = new mongoose.Schema({
     type: Number,
     default: 0  // 默认值为 0
   },
-  isAvailable: { 
+  isActive: { 
     type: Boolean, 
     required: true,
-    default: true  // 默认可售
+    default: true  // 默认激活/可售
   },
   isDeleted: { 
     type: Boolean, 
@@ -59,16 +59,16 @@ const DishSchema = new mongoose.Schema({
 // 添加复合索引：按餐厅和分类查询可售菜品，并按 sortOrder 排序
 DishSchema.index({ restaurantId: 1, dishTypeId: 1, isDeleted: 1, sortOrder: 1 });
 
-// 添加复合索引：按餐厅查询可售菜品
-DishSchema.index({ restaurantId: 1, isDeleted: 1, isAvailable: 1 });
+// 添加复合索引：按餐厅查询激活的菜品
+DishSchema.index({ restaurantId: 1, isDeleted: 1, isActive: 1 });
 
-// 添加复合索引：按分类查询可售菜品，并按 sortOrder 排序
-DishSchema.index({ dishTypeId: 1, isDeleted: 1, isAvailable: 1, sortOrder: 1 });
+// 添加复合索引：按分类查询激活的菜品，并按 sortOrder 排序
+DishSchema.index({ dishTypeId: 1, isDeleted: 1, isActive: 1, sortOrder: 1 });
 
 // 添加实例方法：软删除
 DishSchema.methods.softDelete = function() {
   this.isDeleted = true;
-  this.isAvailable = false;  // 删除时也设为不可售
+  this.isActive = false;  // 删除时也设为非激活/不可售
   return this.save();
 };
 
@@ -78,9 +78,9 @@ DishSchema.methods.restore = function() {
   return this.save();
 };
 
-// 添加实例方法：切换可售状态
+// 添加实例方法：切换激活状态（上架/下架）
 DishSchema.methods.toggleAvailability = function() {
-  this.isAvailable = !this.isAvailable;
+  this.isActive = !this.isActive;
   return this.save();
 };
 
@@ -89,7 +89,7 @@ DishSchema.statics.findAvailableByDishType = function(dishTypeId) {
   return this.find({ 
     dishTypeId, 
     isDeleted: false, 
-    isAvailable: true 
+    isActive: true 
   }).sort({ sortOrder: 1 });
 };
 
@@ -98,7 +98,7 @@ DishSchema.statics.findAvailableByRestaurant = function(restaurantId) {
   return this.find({ 
     restaurantId, 
     isDeleted: false, 
-    isAvailable: true 
+    isActive: true 
   }).sort({ dishTypeId: 1, sortOrder: 1 });
 };
 

@@ -90,7 +90,7 @@ query {
 | createDish | ✅ | ❌ |
 | updateDish | ✅ | ❌ |
 | deleteDish | ✅ | ❌ |
-| updateDishAvailability | ✅ | ❌ |
+| toggleDishStatus | ✅ | ❌ |
 
 ### 📊 订阅限制
 

@@ -44,19 +44,23 @@ const Mutation = {
   updateDishType: dishTypeResolvers.updateDishType,
   deleteDishType: dishTypeResolvers.deleteDishType,
   toggleDishTypeStatus: dishTypeResolvers.toggleDishTypeStatus,
+
   // Dish mutations
   createDish: dishResolvers.createDish,
   updateDish: dishResolvers.updateDish,
   deleteDish: dishResolvers.deleteDish,
-  updateDishAvailability: dishResolvers.updateDishAvailability,
+  toggleDishStatus: dishResolvers.toggleDishStatus,
+
   // Restaurant mutations
   createRestaurant: restaurantResolvers.createRestaurant,
   updateRestaurantInfo: restaurantResolvers.updateRestaurantInfo,
   updateRestaurantSubscriptionPlan: restaurantResolvers.updateRestaurantSubscriptionPlan,
+
   // Waiter mutations
   inviteWaiter: waiterResolvers.inviteWaiter,
   registerWaiter: waiterResolvers.registerWaiter,
   deleteWaiter: waiterResolvers.deleteWaiter,
+
   // Order mutations
   placeOrder: orderResolvers.placeOrder,
   checkoutOrder: orderResolvers.checkoutOrder,

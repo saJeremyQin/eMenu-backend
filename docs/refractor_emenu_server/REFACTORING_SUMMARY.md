@@ -139,11 +139,11 @@ test('requireBoss throws error for waiter role', async () => {
 | 创建菜品 | createDish | ✅ Boss Only | ✅ 检查 |
 | 更新菜品 | updateDish | ✅ Boss Only | - |
 | 删除菜品 | deleteDish | ✅ Boss Only | - |
-| 上架/下架 | updateDishAvailability | ✅ Boss Only | - |
+| 上架/下架 | toggleDishStatus | ✅ Boss Only | - |
 | 获取分类信息 | Dish.dishType (Field Resolver) | ✅ | - |
 
 **特性**:
-- 软删除 (isDeleted=true, isAvailable=false)
+- 软删除 (isDeleted=true, isActive=false)
 - DishType 归属验证（防止跨餐厅引用）
 - 自动 sortOrder 管理（按分类）
 - 支持 dishTypeId 过滤
@@ -195,7 +195,7 @@ DishType:
 Dish:
 ```javascript
 { restaurantId: 1, dishTypeId: 1, isDeleted: 1, sortOrder: 1 }
-{ dishTypeId: 1, isDeleted: 1, isAvailable: 1, sortOrder: 1 }
+{ dishTypeId: 1, isDeleted: 1, isActive: 1, sortOrder: 1 }
 ```
 
 ### 3. Field Resolver 按需加载
