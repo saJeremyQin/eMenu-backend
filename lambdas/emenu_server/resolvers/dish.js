@@ -4,6 +4,7 @@
  */
 import Dish from '/opt/nodejs/models/dish.js';
 import DishType from '/opt/nodejs/models/dishType.js';
+import mongoose from 'mongoose';
 import { getRestaurantIdFromIdentity, requireBoss } from '../utils/auth.js';
 import { checkDishLimit } from '../utils/subscription-limits.js';
 
@@ -27,8 +28,15 @@ export async function listDishes(args, identity) {
   };
   
   // 如果提供了 dishTypeId，只查询该分类下的菜品
-  if (dishTypeId) {
-    filter.dishTypeId = dishTypeId;
+  // 只在明确传入 dishTypeId（非 undefined/null/空字符串）时才添加过滤
+  if (dishTypeId !== undefined && dishTypeId !== null && dishTypeId !== '') {
+    // 尝试把传入的 id 转成 ObjectId 以提升匹配准确性（兼容字符串或 ObjectId）
+    try {
+      filter.dishTypeId = mongoose.Types.ObjectId(dishTypeId);
+    } catch (e) {
+      // 如果不是合法的 ObjectId，就回退为原始值（Mongoose 会尝试匹配字符串）
+      filter.dishTypeId = dishTypeId;
+    }
   }
   
   const dishes = await Dish.find(filter)
@@ -89,7 +97,7 @@ export async function createDish(args, identity) {
     description: description || '',
     image: image || '',
     sortOrder: finalSortOrder,
-  isActive: isActive !== undefined ? isActive : true, // 默认上架（激活）
+    isActive: isActive !== undefined ? isActive : true, // 默认上架（激活）
     isDeleted: false
   });
   
