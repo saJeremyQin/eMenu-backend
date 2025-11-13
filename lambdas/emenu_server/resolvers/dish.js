@@ -38,6 +38,17 @@ export async function listDishes(args, identity) {
       filter.dishTypeId = dishTypeId;
     }
   }
+
+  // Debug: 输出传入参数与最终 filter，便于在 CloudWatch 中排查实际使用的查询条件
+  try {
+    console.log('listDishes called', {
+      receivedDishTypeId: dishTypeId,
+      restaurantId,
+      filterPreview: filter
+    });
+  } catch (logErr) {
+    // ignore logging errors
+  }
   
   const dishes = await Dish.find(filter)
     .sort({ dishTypeId: 1, sortOrder: 1 });
