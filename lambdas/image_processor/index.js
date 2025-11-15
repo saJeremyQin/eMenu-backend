@@ -1,6 +1,6 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import Jimp from 'jimp';
-import { buildS3AndProcessedKeys } from './image_uploader';
+import { buildS3AndProcessedKeys } from './image_uploader/index.js';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 const BUCKET_NAME = process.env.S3_BUCKET;
