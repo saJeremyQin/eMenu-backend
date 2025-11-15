@@ -2,6 +2,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import { buildS3AndProcessedKeys } from './image_uploader';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 const BUCKET_NAME = process.env.S3_BUCKET;
@@ -30,7 +31,8 @@ export const handler = async (event) => {
     const { 
       authToken, 
       fileName, 
-      contentType = 'image/jpeg' 
+      contentType = 'image/jpeg',
+      imageType = 'restaurant-logo' // 'restaurant-logo' | 'dish-image'
     } = body;
 
     // 验证必需参数
@@ -74,9 +76,14 @@ export const handler = async (event) => {
     const fileId = randomUUID();
     const fileExtension = fileName.split('.').pop();
     const uniqueFileName = `${fileId}.${fileExtension}`;    
-    
-    // 构建安全的 S3 路径 - 用户只能上传到自己的目录
-    const s3Key = `public/restaurant-logos/${userSub}/raw/${uniqueFileName}`;
+
+    // 使用共享 helper 构建 s3Key / expectedProcessedKey（支持不同 imageType）
+    const { s3Key, expectedProcessedKey } = buildS3AndProcessedKeys({
+      imageType,
+      userSub,
+      uniqueFileName,
+      fileId
+    });
 
     // 创建预签名 URL 的参数
     const putObjectParams = {
@@ -86,7 +93,8 @@ export const handler = async (event) => {
       Metadata: {
         'user-sub': userSub,
         'original-filename': fileName,
-        'upload-timestamp': new Date().toISOString()
+        'upload-timestamp': new Date().toISOString(),
+        'image-type': imageType
       }
     };
 
@@ -104,7 +112,7 @@ export const handler = async (event) => {
         presignedUrl,
         s3Key,
         expiresIn: 300,
-        expectedProcessedKey: `public/restaurant-logos/${userSub}/processed/${fileId}.jpg`
+        expectedProcessedKey
       })
     };
 

@@ -109,6 +109,11 @@ jobs:
           if [ "$PACKAGE_IMAGE_PROCESSOR" = true ]; then
             echo "📦 Packaging image_processor..."
             cd lambdas/image_processor
+            # include shared helper module so lambda bundle resolves './image_uploader'
+            if [ -d ../image_uploader ]; then
+              cp -r ../image_uploader ./image_uploader
+              echo "🔗 Copied shared image_uploader into image_processor package"
+            fi
             npm ci --production --silent
             zip -r image_processor.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log" "build-*" "Dockerfile*"
             cd ../..
@@ -120,6 +125,11 @@ jobs:
           if [ "$PACKAGE_PRESIGNED_URL" = true ]; then
             echo "📦 Packaging presigned_url_generator..."
             cd lambdas/presigned_url_generator
+            # include shared helper module so lambda bundle resolves './image_uploader'
+            if [ -d ../image_uploader ]; then
+              cp -r ../image_uploader ./image_uploader
+              echo "🔗 Copied shared image_uploader into presigned_url_generator package"
+            fi
             npm ci --production --silent
             zip -r presigned_url_generator.zip . -x "*.git*" "test*" "*.md" "node_modules/.cache/*" "*.log"
             cd ../..

@@ -1,5 +1,6 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import Jimp from 'jimp';
+import { buildS3AndProcessedKeys } from './image_uploader';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 const BUCKET_NAME = process.env.S3_BUCKET;
@@ -14,28 +15,38 @@ export const handler = async (event) => {
     console.log(`Processing file: ${key}`);
 
     try {
-      // 检查是否是餐厅logo原始文件 - 支持两种路径结构
-      // 1. 基于User Pool sub的路径: public/restaurant-logos/{userSub}/raw/{filename}
-      // 2. 直接上传测试路径: public/restaurant-logos/{filename}
-      const restaurantLogoMatch = key.match(/^public\/restaurant-logos\/([^\/]+)\/raw\/(.+)$/) || 
-                                 key.match(/^public\/restaurant-logos\/([^\/]+\.(jpg|jpeg|png))$/i);
-      
-      if (!restaurantLogoMatch) {
-        console.log('File path does not match restaurant logo pattern, skipping');
+      // 支持两类资源：restaurant-logos 和 dish-images；每类同时支持带 userSub 的 raw 路径和直接上传测试路径
+      const restaurantRaw = key.match(/^public\/restaurant-logos\/([^\/]+)\/raw\/(.+)$/);
+      const restaurantDirect = key.match(/^public\/restaurant-logos\/([^\/]+\.(jpg|jpeg|png))$/i);
+
+      const dishRaw = key.match(/^public\/dish-images\/([^\/]+)\/raw\/(.+)$/);
+      const dishDirect = key.match(/^public\/dish-images\/([^\/]+\.(jpg|jpeg|png))$/i);
+
+      let resourceType = null;
+      let match = null;
+
+      if (restaurantRaw || restaurantDirect) {
+        resourceType = 'restaurant-logo';
+        match = restaurantRaw || restaurantDirect;
+      } else if (dishRaw || dishDirect) {
+        resourceType = 'dish-image';
+        match = dishRaw || dishDirect;
+      } else {
+        console.log('File path does not match supported patterns, skipping');
         continue;
       }
 
       let userSub, filename;
-      if (restaurantLogoMatch[2] && restaurantLogoMatch[3]) {
-        // 直接上传格式: public/restaurant-logos/filename.ext
-        userSub = 'test-user'; // 测试用户
-        filename = restaurantLogoMatch[1];
+      // direct 匹配：match[1] 为 filename
+      if ((resourceType === 'restaurant-logo' && restaurantDirect) || (resourceType === 'dish-image' && dishDirect)) {
+        userSub = 'test-user';
+        filename = match[1];
       } else {
-        // 标准格式: public/restaurant-logos/{userSub}/raw/{filename}
-        [, userSub, filename] = restaurantLogoMatch;
+        // raw 匹配： match[1] = userSub, match[2] = filename
+        [, userSub, filename] = match;
       }
-      
-      console.log(`Processing restaurant logo for User Pool sub: ${userSub}, file: ${filename}`);
+
+      console.log(`Processing ${resourceType} for User Pool sub: ${userSub}, file: ${filename}`);
 
       // 检查文件类型
       const contentType = await getContentType(bucket, key);
@@ -77,16 +88,26 @@ export const handler = async (event) => {
         .quality(85) // 设置JPEG质量
         .getBufferAsync(Jimp.MIME_JPEG);
 
-      // 生成处理后的文件名，保存路径根据上传类型决定
+      // 生成处理后的文件名，保存路径根据资源类型与上传类型决定
       const fileNameWithoutExt = filename.split('.')[0];
       let processedKey;
-      
+
       if (userSub === 'test-user') {
-        // 直接上传的测试文件，保存到processed目录
-        processedKey = `public/restaurant-logos/processed/${fileNameWithoutExt}.jpg`;
+        // 直接上传的测试文件：放在顶级 processed 目录以便本地/测试查看
+        if (resourceType === 'dish-image') {
+          processedKey = `public/dish-images/processed/${fileNameWithoutExt}.jpg`;
+        } else {
+          processedKey = `public/restaurant-logos/processed/${fileNameWithoutExt}.jpg`;
+        }
       } else {
-        // 标准用户上传，保存到用户专属的processed目录
-        processedKey = `public/restaurant-logos/${userSub}/processed/${fileNameWithoutExt}.jpg`;
+        // 标准用户上传：使用共享 helper 来确保与 presign 规则一致
+        const { expectedProcessedKey } = buildS3AndProcessedKeys({
+          imageType: resourceType === 'dish-image' ? 'dish-image' : 'restaurant-logo',
+          userSub,
+          uniqueFileName: filename,
+          fileId: fileNameWithoutExt
+        });
+        processedKey = expectedProcessedKey;
       }
 
       // 上传处理后的图片
