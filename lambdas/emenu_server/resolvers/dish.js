@@ -71,10 +71,13 @@ export async function createDish(args, identity) {
   await requireBoss(identity);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
+  // 支持两种调用形态：直接传入字段（legacy/tests）或传入 { input: { ... } }（GraphQL pattern）
+  const input = args?.input || args;
+
   // 检查是否超过订阅限制
   await checkDishLimit(restaurantId);
   
-  const { dishTypeId, name, price, description, imageUrl, image, sortOrder, isActive } = args;
+  const { dishTypeId, name, price, description, imageUrl, sortOrder, isActive } = input;
   
   // Debug: log incoming ids used for lookup so we can inspect CloudWatch when this fails
   try {
@@ -137,7 +140,10 @@ export async function updateDish(args, identity) {
   await requireBoss(identity);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
-  const { id, name, price, description, imageUrl, image, sortOrder } = args;
+  // 支持 args.id 或 args.input 中的 id；并从 input 中读取可更新字段
+  const id = args.id || (args.input && args.input.id);
+  const input = args.input || args;
+  const { name, price, description, imageUrl, image, sortOrder } = input;
   
   const dish = await Dish.findOne({
     _id: id,
