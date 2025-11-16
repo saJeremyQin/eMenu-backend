@@ -54,7 +54,7 @@ export async function createRestaurant(args, identity) {
   expiryDate.setMonth(expiryDate.getMonth() + 3);
   const restaurant = new Restaurant({
     name,
-    image: input.image || null,
+    logoUrl: input.logoUrl || input.image || null,
     address: input.address || null,
     phone: input.phone || null,
     bossId: cognitoId,
@@ -105,7 +105,8 @@ export async function updateRestaurantInfo(args, identity) {
     }
     const updateData = {};
       if (input.name !== undefined) updateData.name = (input.name || '').trim();
-    if (input.image !== undefined) updateData.image = input.image;
+  if (input.logoUrl !== undefined) updateData.logoUrl = input.logoUrl;
+  else if (input.image !== undefined) updateData.logoUrl = input.image;
     if (input.address !== undefined) updateData.address = input.address;
     if (input.phone !== undefined) updateData.phone = input.phone;
     updateData.updatedAt = new Date();

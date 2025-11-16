@@ -74,7 +74,7 @@ export async function createDish(args, identity) {
   // 检查是否超过订阅限制
   await checkDishLimit(restaurantId);
   
-  const { dishTypeId, name, price, description, image, sortOrder, isActive } = args;
+  const { dishTypeId, name, price, description, imageUrl, image, sortOrder, isActive } = args;
   
   // 验证 dishTypeId 存在且属于当前餐厅
   const dishType = await DishType.findOne({
@@ -106,7 +106,7 @@ export async function createDish(args, identity) {
     name,
     price,
     description: description || '',
-    image: image || '',
+    imageUrl: imageUrl || image || '',
     sortOrder: finalSortOrder,
     isActive: isActive !== undefined ? isActive : true, // 默认上架（激活）
     isDeleted: false
@@ -127,7 +127,7 @@ export async function updateDish(args, identity) {
   await requireBoss(identity);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   
-  const { id, name, price, description, image, sortOrder } = args;
+  const { id, name, price, description, imageUrl, image, sortOrder } = args;
   
   const dish = await Dish.findOne({
     _id: id,
@@ -143,7 +143,8 @@ export async function updateDish(args, identity) {
   if (name !== undefined) dish.name = name;
   if (price !== undefined) dish.price = price;
   if (description !== undefined) dish.description = description;
-  if (image !== undefined) dish.image = image;
+  if (imageUrl !== undefined) dish.imageUrl = imageUrl;
+  else if (image !== undefined) dish.imageUrl = image;
   if (sortOrder !== undefined) dish.sortOrder = sortOrder;
   
   await dish.save();

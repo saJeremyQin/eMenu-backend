@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const RestaurantSchema = new mongoose.Schema({
   bossId: { type: String, required: true }, // 改为 String 类型存储 cognitoId
   name: { type: String, required: true },
-  image: String,
+  logoUrl: String,
   address: String,
   phone: String,
   subscriptionPlan: { type: String, enum: ['BASIC', 'PREMIUM'], required: true, default: 'BASIC' },

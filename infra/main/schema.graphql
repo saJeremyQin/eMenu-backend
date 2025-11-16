@@ -52,7 +52,7 @@ type Restaurant {
   id: ID! # Mongoose _id
   bossId: ID!
   name: String!
-  image: String
+  logoUrl: String
   address: String
   phone: String
   subscriptionPlan: SubscriptionPlan!
@@ -127,14 +127,14 @@ type Order {
 
 input RestaurantInput {
   name: String!
-  image: String
+  logoUrl: String
   address: String
   phone: String
 }
 
 input RestaurantInfoInput {
   name: String
-  image: String
+  logoUrl: String
   address: String
   phone: String
 }
@@ -155,10 +155,10 @@ input DishInput {
   dishTypeId: ID!          # 必须指定分类
   name: String!
   price: Int!
-  image: String
+  imageUrl: String
   description: String
   sortOrder: Int           # 可选，默认追加到末尾
-  isActive: Boolean     # 默认为 true
+  isActive: Boolean        # 默认为 true
 }
 
 input OrderItemInput {
