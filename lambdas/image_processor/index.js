@@ -79,13 +79,13 @@ export const handler = async (event) => {
         chunks.push(chunk);
       }
       const imageBuffer = Buffer.concat(chunks);
-      
-      // 使用Jimp处理图片 - 餐厅logo标准化为300x300
-      const image = await Jimp.read(imageBuffer);
-      const processedImageBuffer = await image
-        .cover(300, 300) // 裁剪并缩放到300x300，保持宽高比
-        .quality(85) // 设置JPEG质量
-        .getBufferAsync(Jimp.MIME_JPEG);
+
+      // 额外的文件头嗅探：有时 ContentType metadata 可能不正确（扩展名或上传头错写），
+      // 我们在内存中检查前几个字节以检测典型容器格式（例如 AVIF 的 ftyp box）。
+      const bufferMime = detectMimeFromBuffer(imageBuffer);
+      if (bufferMime && bufferMime !== (contentType || '').toLowerCase()) {
+        console.warn(`ContentType metadata (${contentType}) differs from sniffed buffer mime (${bufferMime}) for ${key}`);
+      }
 
       // 生成处理后的文件名，保存路径根据资源类型与上传类型决定
       const fileNameWithoutExt = filename.split('.')[0];
@@ -108,6 +108,57 @@ export const handler = async (event) => {
         });
         processedKey = expectedProcessedKey;
       }
+
+      // 如果 MIME 类型不是 Jimp 支持的（例如 image/avif），优雅地处理：写入失败标记并跳过处理
+      const jimpSupported = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/bmp',
+        'image/tiff',
+        'image/webp'
+      ];
+
+      // 将 sniff 到的 mime 与 HeadObject 的 ContentType 结合判断，优先使用 buffer 嗅探结果（更可靠）
+      const effectiveMime = bufferMime || (contentType || '').toLowerCase();
+
+      if (!jimpSupported.includes(effectiveMime)) {
+        const failureBody = `Unsupported MIME type: ${contentType} - Lambda image processor does not support this format for server-side processing.`;
+        console.warn(`Unsupported MIME type for ${key}: ${contentType}`);
+
+        // 上传一个小的 failure marker 到 processed 目录，便于排查（不暴露给客户端为公共资源）
+        const failureKey = `${processedKey}.processing_failed.txt`;
+        try {
+          const putFailureParams = {
+            Bucket: bucket,
+            Key: failureKey,
+            Body: Buffer.from(failureBody),
+            ContentType: 'text/plain',
+            Metadata: {
+              'original-key': key,
+              'processed-at': new Date().toISOString(),
+              'user-sub': userSub,
+              'processed-by': 'lambda-image-processor',
+              'error': 'unsupported-mime'
+            }
+          };
+          await s3Client.send(new PutObjectCommand(putFailureParams));
+          console.log(`Wrote processing failure marker: ${failureKey}`);
+        } catch (markErr) {
+          console.error(`Failed to write processing failure marker for ${key}:`, markErr);
+        }
+
+        // 跳过后续处理
+        continue;
+      }
+
+      // 使用Jimp处理图片 - 餐厅logo标准化为300x300
+      const image = await Jimp.read(imageBuffer);
+      const processedImageBuffer = await image
+        .cover(300, 300) // 裁剪并缩放到300x300，保持宽高比
+        .quality(85) // 设置JPEG质量
+        .getBufferAsync(Jimp.MIME_JPEG);
 
       // 上传处理后的图片
       const putObjectParams = {
@@ -147,6 +198,28 @@ async function getContentType(bucket, key) {
     return headResult.ContentType;
   } catch (error) {
     console.error(`Error getting content type for ${key}:`, error);
+    return null;
+  }
+}
+
+// 轻量的 buffer 嗅探函数，检查 ftyp box 来识别 AVIF/HEIF 等常见容器
+function detectMimeFromBuffer(buf) {
+  try {
+    if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
+
+    // 查找 'ftyp' box（通常在 offset 4）
+    const ftypIndex = buf.indexOf('ftyp');
+    if (ftypIndex === -1) return null;
+
+    // 紧随其后的 4 字节为 major_brand，例如 'avif' 或 'mif1' 等
+    const brand = buf.toString('ascii', ftypIndex + 4, ftypIndex + 8).toLowerCase();
+    if (brand === 'avif' || brand === 'avis' || brand === 'mif1' || brand === 'heic' || brand === 'heix') {
+      return 'image/avif';
+    }
+
+    return null;
+  } catch (e) {
+    console.warn('Buffer mime sniff failed:', e);
     return null;
   }
 }

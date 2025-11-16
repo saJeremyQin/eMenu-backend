@@ -469,8 +469,7 @@ resource "aws_iam_role_policy" "presigned_url_policy" {
       {
         Effect = "Allow"
         Action = [
-          "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObject"
         ]
         Resource = [
           "${aws_s3_bucket.restaurant_assets.arn}/public/restaurant-logos/*",

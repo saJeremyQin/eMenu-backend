@@ -34,6 +34,30 @@ export const handler = async (event) => {
       imageType = 'restaurant-logo' // 'restaurant-logo' | 'dish-image'
     } = body;
 
+    // 限制可接受的图片 MIME 类型（与后端处理能力保持一致）
+    const allowedImageTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/bmp',
+      'image/tiff'
+    ];
+
+    // 如果提交了不在白名单中的类型（例如 image/avif），直接拒绝请求并让客户端处理或转换后重试
+    const normalizedContentType = (contentType || '').toLowerCase();
+    if (!allowedImageTypes.includes(normalizedContentType)) {
+      console.log(`Rejecting unsupported content type for presign: ${normalizedContentType}`);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: 'Unsupported image type',
+          message: `Content type ${normalizedContentType} is not supported for server-side processing. Please convert to JPEG/PNG/WEBP/GIF/BMP/TIFF before upload or upload a different file.`
+        })
+      };
+    }
+
     // 验证必需参数
     if (!authToken || !fileName) {
       console.log('Missing parameters:', { authToken: !!authToken, fileName: !!fileName });

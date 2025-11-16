@@ -83,8 +83,7 @@ resource "aws_s3_bucket_policy" "dish_images_policy" {
         Effect = "Allow"
         Principal = "*"
         Action = [
-          "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObject"
         ]
         Resource = "${aws_s3_bucket.dish_images.arn}/public/dish-images/*"
       }
@@ -156,8 +155,7 @@ resource "aws_s3_bucket_policy" "restaurant_assets_policy" {
         Effect = "Allow"
         Principal = "*"
         Action = [
-          "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObject"
         ]
         Resource = "${aws_s3_bucket.restaurant_assets.arn}/public/restaurant-logos/*"
       }
