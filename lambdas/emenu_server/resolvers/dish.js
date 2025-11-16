@@ -76,12 +76,22 @@ export async function createDish(args, identity) {
   
   const { dishTypeId, name, price, description, imageUrl, image, sortOrder, isActive } = args;
   
+  // Debug: log incoming ids used for lookup so we can inspect CloudWatch when this fails
+  try {
+    console.log('createDish: validating dishType', { dishTypeId, restaurantId });
+  } catch (logErr) { /* ignore */ }
+
   // 验证 dishTypeId 存在且属于当前餐厅
   const dishType = await DishType.findOne({
     _id: dishTypeId,
     restaurantId,
     isDeleted: false
   });
+
+  // Debug: log lookup result to help diagnose mismatches between DB and lambda environment
+  try {
+    console.log('createDish: dishType lookup result', { found: !!dishType, dishTypeId: dishType?._id, dishTypeRestaurantId: dishType?.restaurantId });
+  } catch (logErr) { /* ignore */ }
   
   if (!dishType) {
     throw new Error('DishType not found or does not belong to your restaurant');
