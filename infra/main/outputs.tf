@@ -64,3 +64,18 @@ output "restaurant_assets_bucket_arn" {
   description = "ARN of the S3 bucket for restaurant assets"
   value       = aws_s3_bucket.restaurant_assets.arn
 }
+
+output "dish_images_bucket_name" {
+  description = "Name of the S3 bucket for dish images"
+  value       = aws_s3_bucket.dish_images.bucket
+}
+
+output "dish_images_bucket_domain" {
+  description = "Domain name of the S3 bucket for dish images"
+  value       = aws_s3_bucket.dish_images.bucket_domain_name
+}
+
+output "dish_images_bucket_arn" {
+  description = "ARN of the S3 bucket for dish images"
+  value       = aws_s3_bucket.dish_images.arn
+}

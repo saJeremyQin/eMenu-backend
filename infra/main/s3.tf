@@ -8,6 +8,90 @@ resource "aws_s3_bucket" "restaurant_assets" {
   }
 }
 
+resource "aws_s3_bucket" "dish_images" {
+  bucket = "emenu-dish-images-${var.environment}"
+
+  tags = {
+    Name = "Dish Images"
+    Environment = var.environment
+  }
+  
+}
+
+resource "aws_s3_bucket_versioning" "dish_images_versioning" {
+  bucket = aws_s3_bucket.dish_images.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "dish_images_encryption" {
+  bucket = aws_s3_bucket.dish_images.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "dish_images_cors" {
+  bucket = aws_s3_bucket.dish_images.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "dish_images_pab" {
+  bucket = aws_s3_bucket.dish_images.id
+
+  # Keep same behaviour as restaurant_assets (allow public objects under `public/` path)
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "dish_images_policy" {
+  bucket = aws_s3_bucket.dish_images.id
+  depends_on = [aws_s3_bucket_public_access_block.dish_images_pab]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.dish_images.arn}/public/dish-images/*"
+      },
+      {
+        Sid       = "PublicReadProcessedImages"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.dish_images.arn}/public/dish-images/processed/*"
+      },
+      {
+        Sid    = "AuthenticatedUserUpload"
+        Effect = "Allow"
+        Principal = "*"
+        Action = [
+          "s3:PutObject",
+          "s3:PutObjectAcl"
+        ]
+        Resource = "${aws_s3_bucket.dish_images.arn}/public/dish-images/*"
+      }
+    ]
+  })
+}
+
 resource "aws_s3_bucket_versioning" "restaurant_assets_versioning" {
   bucket = aws_s3_bucket.restaurant_assets.id
   versioning_configuration {

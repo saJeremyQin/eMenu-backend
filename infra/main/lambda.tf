@@ -306,7 +306,10 @@ resource "aws_iam_role_policy" "image_processor_policy" {
           "s3:PutObject",
           "s3:DeleteObject"
         ]
-        Resource = "${aws_s3_bucket.restaurant_assets.arn}/*"
+        Resource = [
+          "${aws_s3_bucket.restaurant_assets.arn}/*",
+          "${aws_s3_bucket.dish_images.arn}/*"
+        ]
       }
     ]
   })
@@ -330,7 +333,8 @@ resource "aws_lambda_function" "image_processor" {
 
   environment {
     variables = {
-      S3_BUCKET = aws_s3_bucket.restaurant_assets.bucket
+      S3_RESTAURANT_LOGO_BUCKET = aws_s3_bucket.restaurant_assets.bucket
+      S3_DISH_IMAGES_BUCKET     = aws_s3_bucket.dish_images.bucket
     }
   }
 
@@ -356,6 +360,15 @@ resource "aws_lambda_permission" "allow_s3_invoke" {
   function_name = aws_lambda_function.image_processor.function_name
   principal     = "s3.amazonaws.com"
   source_arn    = aws_s3_bucket.restaurant_assets.arn
+}
+
+# Allow S3 image uploads in the dish images bucket to invoke the image processor
+resource "aws_lambda_permission" "allow_s3_invoke_dish_images" {
+  statement_id  = "AllowExecutionFromDishImagesBucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.image_processor.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.dish_images.arn
 }
 
 # S3 bucket notification to trigger image processing
@@ -385,6 +398,34 @@ resource "aws_s3_bucket_notification" "image_upload_notification" {
   }
 
   depends_on = [aws_lambda_permission.allow_s3_invoke]
+}
+
+# S3 bucket notification for dish images
+resource "aws_s3_bucket_notification" "dish_image_upload_notification" {
+  bucket = aws_s3_bucket.dish_images.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.image_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "public/dish-images/"
+    filter_suffix       = ".jpeg"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.image_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "public/dish-images/"
+    filter_suffix       = ".jpg"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.image_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "public/dish-images/"
+    filter_suffix       = ".png"
+  }
+
+  depends_on = [aws_lambda_permission.allow_s3_invoke_dish_images]
 }
 
 # ----------------------------------------------------------
@@ -431,7 +472,10 @@ resource "aws_iam_role_policy" "presigned_url_policy" {
           "s3:PutObject",
           "s3:PutObjectAcl"
         ]
-        Resource = "${aws_s3_bucket.restaurant_assets.arn}/public/restaurant-logos/*"
+        Resource = [
+          "${aws_s3_bucket.restaurant_assets.arn}/public/restaurant-logos/*",
+          "${aws_s3_bucket.dish_images.arn}/public/dish-images/*"
+        ]
       }
     ]
   })
@@ -445,9 +489,9 @@ resource "aws_cloudwatch_log_group" "presigned_url_generator_logs" {
 
 # Presigned URL Generator Lambda Function
 resource "aws_lambda_function" "presigned_url_generator" {
-  s3_bucket        = data.aws_s3_bucket.lambda_code.bucket
-  s3_key          = "lambdas/presigned_url_generator/presigned_url_generator.zip"
-  function_name   = "emenu-presigned-url-generator-${var.environment}"
+  s3_bucket      = data.aws_s3_bucket.lambda_code.bucket
+  s3_key         = "lambdas/presigned_url_generator/presigned_url_generator.zip"
+  function_name  = "emenu-presigned-url-generator-${var.environment}"
   role           = aws_iam_role.presigned_url_role.arn
   handler        = "index.handler"
   runtime        = "nodejs18.x"
@@ -455,7 +499,8 @@ resource "aws_lambda_function" "presigned_url_generator" {
 
   environment {
     variables = {
-      S3_BUCKET = aws_s3_bucket.restaurant_assets.bucket
+      S3_RESTAURANT_LOGO_BUCKET = aws_s3_bucket.restaurant_assets.bucket
+      S3_DISH_IMAGES_BUCKET = aws_s3_bucket.dish_images.bucket
     }
   }
 

@@ -5,7 +5,6 @@ import { randomUUID } from 'crypto';
 import { buildS3AndProcessedKeys } from './image_uploader/index.js';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
-const BUCKET_NAME = process.env.S3_BUCKET;
 
 export const handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
@@ -85,9 +84,14 @@ export const handler = async (event) => {
       fileId
     });
 
-    // 创建预签名 URL 的参数
+    // 支持多个 bucket：默认使用 RESTAURANT bucket，但如果是 dish-image 则使用 DISH bucket（可通过环境变量配置）
+    const RESTAURANT_BUCKET = process.env.S3_RESTAURANT_LOGO_BUCKET;
+    const DISH_BUCKET = process.env.S3_DISH_IMAGES_BUCKET || RESTAURANT_BUCKET;
+    const targetBucket = imageType === 'dish-image' ? DISH_BUCKET : RESTAURANT_BUCKET;
+
+    // 创建预签名 URL 的参数，使用 targetBucket
     const putObjectParams = {
-      Bucket: BUCKET_NAME,
+      Bucket: targetBucket,
       Key: s3Key,
       ContentType: contentType,
       Metadata: {
@@ -104,13 +108,14 @@ export const handler = async (event) => {
       expiresIn: 300 // 5分钟
     });
 
-    console.log(`Generated presigned URL for key: ${s3Key}`);
+    console.log(`Generated presigned URL for key: ${s3Key} in bucket: ${putObjectParams.Bucket}`);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         presignedUrl,
         s3Key,
+        s3Bucket: putObjectParams.Bucket,
         expiresIn: 300,
         expectedProcessedKey
       })

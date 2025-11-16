@@ -3,7 +3,6 @@ import Jimp from 'jimp';
 import { buildS3AndProcessedKeys } from './image_uploader/index.js';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
-const BUCKET_NAME = process.env.S3_BUCKET;
 
 export const handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
