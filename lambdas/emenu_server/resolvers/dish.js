@@ -188,13 +188,11 @@ export async function deleteDish(args, identity) {
     throw new Error('Dish not found or already deleted');
   }
   
-  // 使用模型的 softDelete 实例方法
-  await dish.softDelete();
-  
-  return {
-    success: true,
-    message: 'Dish deleted successfully'
-  };
+  // 使用模型的 softDelete 实例方法 —— softDelete 返回保存后的文档
+  const deleted = await dish.softDelete();
+
+  // GraphQL schema expects the resolver to return the Dish object
+  return deleted;
 }
 
 /**
