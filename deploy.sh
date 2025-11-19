@@ -155,6 +155,13 @@ elif check_git_repo; then
         DEPLOY_IMAGE_PROCESSOR=true
     fi
     
+    # If shared image_uploader changes, deploy both presigned_url_generator and image_processor
+    if has_changes "lambdas/image_uploader/"; then
+        print_info "Changes detected in shared image_uploader module"
+        DEPLOY_PRESIGNED_URL=true
+        DEPLOY_IMAGE_PROCESSOR=true
+    fi
+    
     # If no changes detected, ask user what to do (unless in dry-run mode)
     if ! $DEPLOY_COMMON_MODELS && ! $DEPLOY_EMENU_SERVER && ! $DEPLOY_POST_CONFIRMATION && ! $DEPLOY_PRESIGNED_URL && ! $DEPLOY_IMAGE_PROCESSOR; then
         if $DRY_RUN; then
@@ -331,13 +338,20 @@ if $DEPLOY_PRESIGNED_URL; then
     PRESIGNED_DIR="lambdas/presigned_url_generator"
     PRESIGNED_ZIP="presigned_url_generator.zip"
     PRESIGNED_S3_KEY="lambdas/presigned_url_generator/${PRESIGNED_ZIP}"
-    PRESIGNED_FUNCTION_NAME="presigned_url_generator"
+    PRESIGNED_FUNCTION_NAME="emenu-presigned-url-generator-${ENVIRONMENT}"
 
     echo "📦 Installing presigned_url_generator dependencies in ${PRESIGNED_DIR}..."
     (cd "$PRESIGNED_DIR" && npm install)
 
+    echo "📦 Copying shared image_uploader module..."
+    mkdir -p "${PRESIGNED_DIR}/image_uploader"
+    cp "lambdas/image_uploader/index.js" "${PRESIGNED_DIR}/image_uploader/"
+
     echo "📦 Packaging presigned_url_generator zip from ${PRESIGNED_DIR}..."
     (cd "$PRESIGNED_DIR" && zip -r "$PRESIGNED_ZIP" . -x "*.zip")
+
+    echo "🧹 Cleaning up copied files..."
+    rm -rf "${PRESIGNED_DIR}/image_uploader"
 
     echo "🚀 Uploading presigned_url_generator to S3: s3://${S3_BUCKET}/${PRESIGNED_S3_KEY}..."
     aws s3 cp "${PRESIGNED_DIR}/${PRESIGNED_ZIP}" "s3://${S3_BUCKET}/${PRESIGNED_S3_KEY}" --region "$REGION"
@@ -361,13 +375,20 @@ if $DEPLOY_IMAGE_PROCESSOR; then
     IMAGE_PROC_DIR="lambdas/image_processor"
     IMAGE_PROC_ZIP="image_processor.zip"
     IMAGE_PROC_S3_KEY="lambdas/image_processor/${IMAGE_PROC_ZIP}"
-    IMAGE_PROC_FUNCTION_NAME="image_processor"
+    IMAGE_PROC_FUNCTION_NAME="emenu-image-processor-${ENVIRONMENT}"
 
     echo "📦 Installing image_processor dependencies in ${IMAGE_PROC_DIR}..."
     (cd "$IMAGE_PROC_DIR" && npm install)
 
+    echo "📦 Copying shared image_uploader module..."
+    mkdir -p "${IMAGE_PROC_DIR}/image_uploader"
+    cp "lambdas/image_uploader/index.js" "${IMAGE_PROC_DIR}/image_uploader/"
+
     echo "📦 Packaging image_processor zip from ${IMAGE_PROC_DIR}..."
     (cd "$IMAGE_PROC_DIR" && zip -r "$IMAGE_PROC_ZIP" . -x "*.zip")
+
+    echo "🧹 Cleaning up copied files..."
+    rm -rf "${IMAGE_PROC_DIR}/image_uploader"
 
     echo "🚀 Uploading image_processor to S3: s3://${S3_BUCKET}/${IMAGE_PROC_S3_KEY}..."
     aws s3 cp "${IMAGE_PROC_DIR}/${IMAGE_PROC_ZIP}" "s3://${S3_BUCKET}/${IMAGE_PROC_S3_KEY}" --region "$REGION"
