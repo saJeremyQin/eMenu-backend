@@ -5,7 +5,15 @@ const OrderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true, comment: 'by cents' }, // 单位分
   quantity: { type: Number, required: true },
-  notes: String
+  notes: String,
+  
+  // v4 新增字段
+  status: { type: String, enum: ['DRAFT', 'PENDING_SCAN', 'CONFIRMED', 'CANCELLED', 'PAID'], default: 'DRAFT' },
+  confirmedAt: { type: String }, // 确认时间
+  cancelledAt: { type: String }, // 取消时间
+  cancelReason: { type: String }, // 取消原因
+  cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // 取消操作员ID
+  paidAt: { type: String } // 支付时间
 }, { 
   timestamps: true,
   toJSON: {

@@ -3,7 +3,7 @@ name: Terraform Deploy
 on:
   push:
     branches:
-      - dev  # 监听dev分支的推送
+      - order  # 监听dev分支的推送
     paths:
       - "infra/main/**"
       - "lambdas/**"      # 监听所有Lambda代码变更

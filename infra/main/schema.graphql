@@ -14,8 +14,7 @@ enum SubscriptionPlan {
 
 enum OrderStatus {
   PENDING
-  CONFIRMED # 已确认，正在制作
-  COMPLETED # 已完成/结账
+  PAID
   CANCELLED
 }
 
@@ -98,27 +97,70 @@ type Dish {
   dishType: DishType!      # Relationship: DishType this dish belongs to (REQUIRED - every dish must have a valid category)
 }
 
-# 订单行项目 Type (嵌入在 Order 中)
+# 订单行项目 Type (用于OrderBatch中)
 type OrderItem {
+  itemId: ID!                # Item 唯一ID
   dishId: ID!
-  name: String! # 下单时的菜品名称 (历史快照)
-  price: Int! # 下单时的菜品价格 (历史快照)
+  name: String!              # Dish name at the time of order (snapshot)
+  price: Int!                # Dish price at the time of order (snapshot)
   quantity: Int!
   notes: String
+  status: String!            # ORDERED | CONFIRMED | CANCELLED
+  confirmedAt: String        # 确认时间 (ISO format)
+  cancelledAt: String        # 取消时间 (ISO format)
+  cancelReason: String       # 取消原因
 }
 
-# 订单 Type
+# 订单批次 Type (代表一次送厨事件)
+type OrderBatch {
+  batchId: ID!               # 批次唯一ID
+  items: [OrderItem!]!       # 该批次包含的菜品
+  confirmedAt: String!       # 送厨时间 (ISO format)
+}
+
+# 订单 Type (简化版)
 type Order {
-  id: ID! # Mongoose _id
+  id: ID!                    # Mongoose _id
   restaurantId: ID!
-  waiterId: ID! # 下单服务员的 User ID
-  tableNumber: String!
-  status: OrderStatus!
-  totalAmount: Int!
-  createdAt: String!
+  waiterId: ID!              # 下单服务员的 User ID
+  tableNumber: String!       # 桌号
   
-  # 嵌入列表: 订单包含的行项目
-  items: [OrderItem!] 
+  # 分餐信息
+  dinerId: String            # "0" (整桌) / "1" / "2" / "3" (Diner number)
+  tabId: String              # "default" / "tab-1" / "tab-2" (Tab ID)
+  
+  # 核心数据：已确认的批次
+  batches: [OrderBatch!]!    # 多次送厨形成的批次数组
+  
+  # 金额信息
+  totalConfirmedAmount: Int! # 已送厨菜品的总金额 (in cents)
+  paidAmount: Int            # 已支付金额 (in cents)
+  
+  # 订单状态
+  status: OrderStatus!       # PENDING / PAID / CANCELLED
+  
+  # 其他信息
+  isFromCustomerScan: Boolean # Whether the order is from customer scan
+  scannedAt: String          # Customer scan time
+  paidAt: String             # Payment time
+  createdAt: String!
+  updatedAt: String!
+}
+
+# 分餐者信息 Type
+type DinerInfo {
+  dinerId: String!           # "0" / "1" / "2" / "3"
+  tabId: String!             # "default" / "tab-1" / "tab-2"
+  confirmedAmount: Int!      # 该分餐者已送厨的总金额
+  batches: [OrderBatch!]!    # 该分餐者的批次列表
+}
+
+# 桌台状态 Type (用于前端展示表格卡片信息)
+type TableStatus {
+  tableNumber: String!       # 桌号
+  activeOrders: [Order!]!    # 该桌未支付的所有订单
+  totalConfirmedAmount: Int! # 该桌已送厨的总金额 (所有diner汇总)
+  diners: [DinerInfo!]!      # 各分餐者的明细信息
 }
 
 # ====================================================================
@@ -167,9 +209,12 @@ input OrderItemInput {
   notes: String
 }
 
-input OrderInput {
-  tableNumber: String!
-  items: [OrderItemInput!]!
+input ConfirmOrderItemsInput {
+  tableNumber: String!           # 桌号
+  dinerId: String!               # "0" (整桌或第一人) / "1" / "2" / "3"...
+  tabId: String!                 # "tab-0" / "tab-1" / "tab-2"...
+  items: [OrderItemInput!]!      # 要送厨的菜品
+  isFromCustomerScan: Boolean    # 是否来自顾客扫码 (默认 false)
 }
 
 # ====================================================================
@@ -187,6 +232,10 @@ type Query {
 
   # 订单查询
   listOrders(status: OrderStatus, dateFrom: String, dateTo: String): [Order]
+  getOrder(id: ID!): Order
+  
+  # 新增：桌台状态查询 (用于前端表格列表)
+  getTableStatus(tableNumber: String!): TableStatus
 }
 
 type Mutation {
@@ -213,7 +262,22 @@ type Mutation {
   toggleDishStatus(id: ID!, isActive: Boolean!): Dish # Switch dish availability status
 
   # 订单操作
-  placeOrder(input: OrderInput!): Order
-  checkoutOrder(orderId: ID!): Order
-  updateOrderStatus(orderId: ID!, status: OrderStatus!): Order
+  # 1. 送厨（自动创建或关联订单，形成一个batch）
+  confirmOrderItems(input: ConfirmOrderItemsInput!): Order
+  
+  # 2. 继续添加菜品并送厨（可多次调用，每次形成新batch）
+  # 使用同一个confirmOrderItems接口，根据 tableNumber + dinerId + tabId 自动关联或创建订单
+  
+  # 3. 取消订单中的单个菜品项
+  cancelOrderItem(
+    orderId: ID!,
+    itemId: ID!,
+    reason: String
+  ): Order
+  
+  # 4. 支付订单（全额支付）
+  payOrder(orderId: ID!): Order
+  
+  # 5. 取消整个订单
+  cancelOrder(orderId: ID!): Order
 }

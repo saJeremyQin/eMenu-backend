@@ -32,6 +32,8 @@ const Query = {
   // Waiter queries
   listWaiters: waiterResolvers.listWaiters,
   // Order queries
+  getOrder: orderResolvers.getOrder,
+  getTableStatus: orderResolvers.getTableStatus,
   listOrders: orderResolvers.listOrders,
 };
 
@@ -62,9 +64,10 @@ const Mutation = {
   deleteWaiter: waiterResolvers.deleteWaiter,
 
   // Order mutations
-  placeOrder: orderResolvers.placeOrder,
-  checkoutOrder: orderResolvers.checkoutOrder,
-  updateOrderStatus: orderResolvers.updateOrderStatus,
+  confirmOrderItems: orderResolvers.confirmOrderItems,
+  cancelOrderItem: orderResolvers.cancelOrderItem,
+  payOrder: orderResolvers.payOrder,
+  cancelOrder: orderResolvers.cancelOrder,
 };
 
 // ====================================================================
