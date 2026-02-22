@@ -252,10 +252,17 @@ export async function confirmOrderItems(args, identity) {
     
     console.log(`Order ${isNewOrder ? 'created' : 'updated'}: ${savedOrder._id}, dinerId=${dinerId}, tabId=${tabId}, batches=${savedOrder.batches.length}`);
     
+    // 🔧 DEBUG: 验证保存后的数据结构
+    console.log('🔧 confirmOrderItems - savedOrder object:', savedOrder);
+    console.log('🔧 confirmOrderItems - savedOrder.batches:', savedOrder.batches);
+    const jsonOrder = savedOrder.toJSON();
+    console.log('🔧 confirmOrderItems - After toJSON():', jsonOrder);
+    console.log('🔧 confirmOrderItems - JSON keys:', jsonOrder ? Object.keys(jsonOrder) : 'NULL');
+    
     // 7. 发送webhook给厨房（KDS系统）
     // TODO: await notifyKitchen(savedOrder, batch);
     
-    return savedOrder.toJSON();
+    return jsonOrder;
   } catch (err) {
     console.error('Error confirming order items:', err);
     throw new Error(`Failed to confirm order items: ${err.message}`);
