@@ -260,40 +260,53 @@ resource "aws_appsync_resolver" "toggle_dish_status_mutation" {
 // ORDER MUTATION RESOLVERS
 // ==================================================================
 
-// Add resolver for placeOrder mutation
-resource "aws_appsync_resolver" "place_order_mutation" {
+// Add resolver for confirmOrderItems mutation
+resource "aws_appsync_resolver" "confirm_order_items_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id
-  field       = "placeOrder"
+  field       = "confirmOrderItems"
   type        = "Mutation"
   data_source = aws_appsync_datasource.emenu_datasource.name
 
-  request_template  = file("${path.module}/mapping-templates/placeOrder-request.vtl")
+  request_template  = file("${path.module}/mapping-templates/confirmOrderItems-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
-// Add resolver for checkoutOrder mutation
-resource "aws_appsync_resolver" "checkout_order_mutation" {
+// Add resolver for cancelOrderItem mutation
+resource "aws_appsync_resolver" "cancel_order_item_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id
-  field       = "checkoutOrder"
+  field       = "cancelOrderItem"
   type        = "Mutation"
   data_source = aws_appsync_datasource.emenu_datasource.name
 
-  request_template  = file("${path.module}/mapping-templates/checkoutOrder-request.vtl")
+  request_template  = file("${path.module}/mapping-templates/cancelOrderItem-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
-// Add resolver for updateOrderStatus mutation
-resource "aws_appsync_resolver" "update_order_status_mutation" {
+// Add resolver for payOrder mutation
+resource "aws_appsync_resolver" "pay_order_mutation" {
   api_id      = aws_appsync_graphql_api.emenu_apis.id
-  field       = "updateOrderStatus"
+  field       = "payOrder"
   type        = "Mutation"
   data_source = aws_appsync_datasource.emenu_datasource.name
 
-  request_template  = file("${path.module}/mapping-templates/updateOrderStatus-request.vtl")
+  request_template  = file("${path.module}/mapping-templates/payOrder-request.vtl")
+  response_template = file("${path.module}/mapping-templates/common-response.vtl")
+
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
+}
+
+// Add resolver for cancelOrder mutation
+resource "aws_appsync_resolver" "cancel_order_mutation" {
+  api_id      = aws_appsync_graphql_api.emenu_apis.id
+  field       = "cancelOrder"
+  type        = "Mutation"
+  data_source = aws_appsync_datasource.emenu_datasource.name
+
+  request_template  = file("${path.module}/mapping-templates/cancelOrder-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
   depends_on = [aws_appsync_graphql_api.emenu_apis]
