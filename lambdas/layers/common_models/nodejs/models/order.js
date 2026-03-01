@@ -25,6 +25,8 @@ const OrderItemSchema = new mongoose.Schema({
 // OrderBatch 子文档 schema（嵌入式）
 const OrderBatchSchema = new mongoose.Schema({
   batchId: { type: String, required: true }, // 本批次的唯一ID
+  tabId: { type: String, required: true }, // 该批次对应的diner tab (e.g. "tab-1-0")
+  dinerId: { type: String, required: true }, // 该批次对应的diner ID (e.g. "0", "1", "2")
   items: [OrderItemSchema], // 该批次的菜品
   confirmedAt: { type: Date, required: true } // 这一批送厨的时间（仅作时间标记，无状态）
 }, { _id: false });
