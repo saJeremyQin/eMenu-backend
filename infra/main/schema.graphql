@@ -114,6 +114,8 @@ type OrderItem {
 # 订单批次 Type (代表一次送厨事件)
 type OrderBatch {
   batchId: ID!               # 批次唯一ID
+  tabId: String!             # 该批次对应的 diner tab (e.g., "tab-1-0", "tab-1-1")
+  dinerId: String!           # 该批次对应的 diner ID (e.g., "0", "1", "2")
   items: [OrderItem!]!       # 该批次包含的菜品
   confirmedAt: String!       # 送厨时间 (ISO format)
 }

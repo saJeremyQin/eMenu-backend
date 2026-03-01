@@ -227,9 +227,11 @@ export async function confirmOrderItems(args, identity) {
       });
     }
     
-    // 3. 创建新batch
+    // 3. 创建新batch（包含tabId和dinerId用于前端过滤）
     const batch = {
       batchId: uuidv4(),
+      tabId: tabId,          // 用于前端按diner过滤
+      dinerId: dinerId,      // 用于前端按diner过滤
       items: orderItems,
       confirmedAt: new Date().toISOString()
     };
