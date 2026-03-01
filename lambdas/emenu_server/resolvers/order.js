@@ -236,6 +236,15 @@ export async function confirmOrderItems(args, identity) {
       confirmedAt: new Date().toISOString()
     };
     
+    console.log('🔧 Creating batch:', {
+      batchId: batch.batchId,
+      tabId: batch.tabId,
+      dinerId: batch.dinerId,
+      itemsCount: batch.items.length,
+      hasTabId: 'tabId' in batch,
+      hasDinerId: 'dinerId' in batch,
+    });
+    
     // 4. 添加batch到订单
     if (!order.batches) {
       order.batches = [];
