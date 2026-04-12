@@ -55,11 +55,11 @@ export async function getTableStatus(args, identity) {
   const { tableNumber } = args;
   
   try {
-    // 1. 查找该桌的所有未支付订单
+    // 1. 查找该桌所有 PENDING 订单（排除 PAID 和 CANCELLED）
     const activeOrders = await Order.find({
       restaurantId,
       tableNumber,
-      status: { $ne: 'PAID' }  // 未支付的订单
+      status: 'PENDING'
     }).sort({ dinerId: 1, createdAt: 1 });
     
     // 2. 计算整桌总金额
@@ -114,8 +114,8 @@ export async function listOrders(args, identity) {
     
     if (dateFrom || dateTo) {
       filter.createdAt = {};
-      if (dateFrom) filter.createdAt.$gte = dateFrom;
-      if (dateTo) filter.createdAt.$lte = dateTo;
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);  // ✅ 转为 Date 对象确保比较正确
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
     }
     
     const orders = await Order.find(filter)
@@ -185,46 +185,64 @@ export async function confirmOrderItems(args, identity) {
       const orderItem = {
         itemId: uuidv4(),
         dishId: item.dishId.toString(),
-        name: item.name || dish.name,
-        price: item.price || dish.price,
+        name: dish.name,
+        price: dish.price,  // ✅ 安全：始终使用数据库中的价格，不信任客户端传入的价格
         quantity: item.quantity,
         notes: item.notes || null,
-        // 直接设置为CONFIRMED（waiter送厨时）
-        // 如果是顾客自己点单来的，在createOrderFromCustomerScan中会先设为ORDERED
         status: isFromCustomerScan ? 'ORDERED' : 'CONFIRMED',
-        confirmedAt: isFromCustomerScan ? null : new Date().toISOString()
+        confirmedAt: isFromCustomerScan ? null : new Date()
       };
       
       orderItems.push(orderItem);
     }
     
-    // 2. 查找或创建订单
+    // 2. 查找或创建订单（只查 PENDING 订单）
     let order = await Order.findOne({
       restaurantId,
       tableNumber,
       dinerId,
       tabId,
-      status: { $ne: 'CANCELLED' }
+      status: 'PENDING'
     });
     
     let isNewOrder = false;
     
     if (!order) {
-      // 创建新订单
-      isNewOrder = true;
-      order = new Order({
+      // ✅ 修复：检查同 tabId 下是否存在已取消订单
+      // 场景：waiter 在同一桌台会话内取消订单后再次点单，
+      // 若直接创建新 Order 会因唯一索引 (restaurantId,tableNumber,dinerId,tabId) 冲突报 E11000。
+      const cancelledOrder = await Order.findOne({
         restaurantId,
-        waiterId: waiter._id,
         tableNumber,
         dinerId,
         tabId,
-        status: 'PENDING',
-        totalConfirmedAmount: 0,
-        batches: [],
-        isFromCustomerScan,
-        scannedAt: isFromCustomerScan ? new Date().toISOString() : null,
-        paidAmount: 0
+        status: 'CANCELLED'
       });
+
+      if (cancelledOrder) {
+        // 重新激活已取消订单：清空批次，重置金额，恢复 PENDING
+        cancelledOrder.status = 'PENDING';
+        cancelledOrder.batches = [];
+        cancelledOrder.totalConfirmedAmount = 0;
+        cancelledOrder.waiterId = waiter._id;
+        order = cancelledOrder;
+      } else {
+        // 创建全新订单
+        isNewOrder = true;
+        order = new Order({
+          restaurantId,
+          waiterId: waiter._id,
+          tableNumber,
+          dinerId,
+          tabId,
+          status: 'PENDING',
+          totalConfirmedAmount: 0,
+          batches: [],
+          isFromCustomerScan,
+          scannedAt: isFromCustomerScan ? new Date().toISOString() : null,
+          paidAmount: 0
+        });
+      }
     }
     
     // 3. 创建新batch（包含tabId和dinerId用于前端过滤）
@@ -408,7 +426,7 @@ export async function cancelOrderItem(args, identity) {
           throw new Error('Item is already cancelled.');
         }
         item.status = 'CANCELLED';
-        item.cancelledAt = new Date().toISOString();
+        item.cancelledAt = new Date();  // ✅ 使用 Date 对象保持与 schema 类型一致
         item.cancelReason = reason || 'No reason provided';
         break;
       }

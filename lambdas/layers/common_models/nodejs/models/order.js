@@ -69,6 +69,12 @@ const OrderSchema = new mongoose.Schema({
   }
 });
 
+// 自动更新 updatedAt
+OrderSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
 // 索引优化查询性能
 OrderSchema.index({ restaurantId: 1, tableNumber: 1 });
 OrderSchema.index({ restaurantId: 1, tableNumber: 1, dinerId: 1, tabId: 1 }, { unique: true });
