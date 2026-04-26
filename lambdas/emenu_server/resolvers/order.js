@@ -338,7 +338,7 @@ export async function payOrder(args, identity) {
     // 标记订单为已支付
     order.status = 'PAID';
     order.paidAmount = totalAmount;
-    order.paidAt = new Date().toISOString();
+    order.paidAt = new Date();
     
     const updatedOrder = await order.save();
     

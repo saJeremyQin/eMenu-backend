@@ -49,7 +49,7 @@ const OrderSchema = new mongoose.Schema({
   
   // 支付信息
   paidAmount: { type: Number, default: 0, comment: 'by cents' },
-  paidAt: { type: String }, // ISO timestamp
+  paidAt: { type: Date },
   
   // 扫码相关
   isFromCustomerScan: { type: Boolean, default: false },
