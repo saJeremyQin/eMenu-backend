@@ -7,17 +7,31 @@
 // SUBSCRIPTION PLAN LIMITS CONSTANTS
 // ====================================================================
 export const SUBSCRIPTION_LIMITS = {
-  BASIC: {
+  FREE: {
     restaurants: 1,
     dishTypes: 2,
     dishes: 10,
-    waiters: 2
+    waiters: 1,
+    tables: 20
   },
-  PREMIUM: {
+  PRO: {
     restaurants: 1,
     dishTypes: 20,
     dishes: 200,
-    waiters: 20
+    waiters: 20,
+    tables: 100
+  }
+};
+
+// ====================================================================
+// SUBSCRIPTION PLAN FEATURE FLAGS
+// ====================================================================
+export const SUBSCRIPTION_FEATURES = {
+  FREE: {
+    canPickupOtherWaiterOngoingOrders: false
+  },
+  PRO: {
+    canPickupOtherWaiterOngoingOrders: true
   }
 };
 

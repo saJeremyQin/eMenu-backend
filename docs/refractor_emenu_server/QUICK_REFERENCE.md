@@ -94,10 +94,10 @@ query {
 
 ### 📊 订阅限制
 
-| Plan | DishTypes | Dishes | Waiters |
-|------|-----------|--------|---------|
-| BASIC | 2 | 10 | 2 |
-| PREMIUM | 20 | 200 | 20 |
+| Plan | DishTypes | Dishes | Waiters | Tables |
+|------|-----------|--------|---------|--------|
+| FREE | 2 | 10 | 1 | 20 |
+| PRO | 20 | 200 | 20 | 100 |
 
 ### 🛠️ 常用工具函数
 
@@ -180,7 +180,7 @@ aws logs tail /aws/lambda/emenu-server --follow
 | 导入错误 | 检查路径是否使用相对路径 (`./` 或 `../`) |
 | SSM 参数错误 | 检查 `DB_PARAM_NAME` 环境变量 |
 | 权限被拒 | 确认用户角色为 boss |
-| 超过限制 | 检查订阅计划 (BASIC/PREMIUM) |
+| 超过限制 | 检查订阅计划 (FREE/PRO) |
 | Field Resolver 未触发 | 确认 GraphQL query 中包含该字段 |
 
 ### 💡 最佳实践

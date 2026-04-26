@@ -103,7 +103,7 @@
    • checkDishLimit(restaurantId)
    • 查询 Restaurant 的 subscriptionPlan
    • 统计当前 Dish 数量
-   • 比较限制 (BASIC: 10, PREMIUM: 200)
+   • 比较限制 (FREE: 10, PRO: 200)
    
    Step 4.4: 验证 DishType
    • 查询 DishType.findOne({ _id, restaurantId })
@@ -337,7 +337,7 @@ resolvers/dish.js: createDish()
         │
         ├─> MongoDB: Restaurant.findById(restaurantId)
         │     │
-        │     └─> { subscriptionPlan: "BASIC" }
+        │     └─> { subscriptionPlan: "FREE" }
         │
         ├─> MongoDB: Dish.countDocuments({ 
         │     restaurantId, 
@@ -348,13 +348,13 @@ resolvers/dish.js: createDish()
         │
         ├─> config/constants.js: SUBSCRIPTION_LIMITS
         │     │
-        │     └─> BASIC.dishes = 10
+        │     └─> FREE.dishes = 10
         │
         ├─> 比较: currentCount (8) >= limit (10)?
         │     │
         │     ├─ NO (8 < 10) → ✅ 返回 { currentCount: 8, limit: 10, remaining: 2 }
         │     │
-        │     └─ YES (≥ 10) → ❌ throw Error("已达到BASIC版本菜品数量限制（10个）")
+        │     └─ YES (≥ 10) → ❌ throw Error("已达到FREE版本菜品数量限制（10个）")
         │
         └─> Resolver 继续执行
 ```

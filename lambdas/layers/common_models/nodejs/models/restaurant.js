@@ -7,11 +7,12 @@ const RestaurantSchema = new mongoose.Schema({
   logoUrl: String,
   address: String,
   phone: String,
-  subscriptionPlan: { type: String, enum: ['BASIC', 'PREMIUM'], required: true, default: 'BASIC' },
+  subscriptionPlan: { type: String, enum: ['FREE', 'PRO'], required: true, default: 'FREE' },
   subscriptionExpiry: String, // 可为 null
   dishTypeLimit: { type: Number, required: true, default: 3 },
   dishLimit: { type: Number, required: true, default: 5 },
   waiterLimit: { type: Number, required: true, default: 1 },
+  tableLimit: { type: Number, required: true, default: 20 },
   waiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // User id数组
 }, { 
     timestamps: true,

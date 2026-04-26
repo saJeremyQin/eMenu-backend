@@ -8,8 +8,8 @@ enum Role {
 }
 
 enum SubscriptionPlan {
-  BASIC
-  PREMIUM
+  FREE
+  PRO
 }
 
 enum OrderStatus {
@@ -55,12 +55,13 @@ type Restaurant {
   address: String
   phone: String
   subscriptionPlan: SubscriptionPlan!
-  subscriptionExpiry: String! # 到期日，ISO 格式，比如 "2025-12-31"
+  subscriptionExpiry: String # FREE 可为 null（永久有效）
 
   # 业务限额字段 (从 MongoDB 动态读取)
   dishTypeLimit: Int!
   dishLimit: Int!
   waiterLimit: Int!
+  tableLimit: Int!
   
   # 关联: waiters 数组（存储 waiter 的 _id，查询时可 populate）
   waiters: [User]
@@ -185,7 +186,7 @@ input RestaurantInfoInput {
 
 input SubscriptionUpgradeInput {
   subscriptionPlan: SubscriptionPlan!
-  subscriptionExpiry: String! # 到期日期
+  subscriptionExpiry: String # FREE 可为空
   paymentTransactionId: String # 支付交易ID，用于记录
 }
 
@@ -242,7 +243,7 @@ type Query {
 
 type Mutation {
   # 餐厅与 Boss 管理
-  createRestaurant(input: RestaurantInput!): Restaurant # 仅创建 BASIC 版本
+  createRestaurant(input: RestaurantInput!): Restaurant # 仅创建 FREE 版本
   updateRestaurantInfo(input: RestaurantInfoInput!): Restaurant # 更新餐厅基本信息
   updateRestaurantSubscriptionPlan(input: SubscriptionUpgradeInput!): Restaurant # 订阅升级
   

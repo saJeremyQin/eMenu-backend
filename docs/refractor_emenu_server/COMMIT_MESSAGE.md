@@ -72,7 +72,7 @@ lambdas/emenu_server/
 - ✅ 严格的权限验证 (requireBoss)
 - ✅ 数据隔离 (按 restaurantId 自动过滤)
 - ✅ DishType 归属验证（防止跨餐厅引用）
-- ✅ 订阅限制检查（BASIC/PREMIUM）
+- ✅ 订阅限制检查（FREE/PRO）
 
 ### 性能优化
 - ✅ SSM 参数缓存（避免重复调用）

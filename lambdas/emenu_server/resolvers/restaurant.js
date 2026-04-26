@@ -20,7 +20,7 @@ export async function getRestaurant(args, identity) {
   }
 }
 
-// 创建餐厅 - 固定为 BASIC 版本
+// 创建餐厅 - 固定为 FREE 版本
 export async function createRestaurant(args, identity) {
   console.log('Executing createRestaurant...');
   const cognitoId = identity.sub;
@@ -48,21 +48,19 @@ export async function createRestaurant(args, identity) {
     console.error('Validation Error: Missing required fields for restaurant creation.');
     throw new Error('Restaurant name and address are required.');
   }
-  const basicLimits = SUBSCRIPTION_LIMITS.BASIC;
-  const now = new Date();
-  const expiryDate = new Date(now.getTime());
-  expiryDate.setMonth(expiryDate.getMonth() + 3);
+  const freeLimits = SUBSCRIPTION_LIMITS.FREE;
   const restaurant = new Restaurant({
     name,
     logoUrl: input.logoUrl || input.image || null,
     address: input.address || null,
     phone: input.phone || null,
     bossId: cognitoId,
-    subscriptionPlan: "BASIC",
-    subscriptionExpiry: expiryDate.toISOString(),
-    dishTypeLimit: basicLimits.dishTypes,
-    dishLimit: basicLimits.dishes,
-    waiterLimit: basicLimits.waiters
+    subscriptionPlan: "FREE",
+    subscriptionExpiry: null,
+    dishTypeLimit: freeLimits.dishTypes,
+    dishLimit: freeLimits.dishes,
+    waiterLimit: freeLimits.waiters,
+    tableLimit: freeLimits.tables
   });
   try {
     const savedRestaurant = await restaurant.save();
@@ -139,7 +137,7 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
   if (!restaurantId) {
     throw new Error('Restaurant not found for this user');
   }
-  if (!['BASIC', 'PREMIUM'].includes(input.subscriptionPlan)) {
+  if (!['FREE', 'PRO'].includes(input.subscriptionPlan)) {
     throw new Error('Invalid subscription plan');
   }
   const planLimits = SUBSCRIPTION_LIMITS[input.subscriptionPlan];
@@ -149,14 +147,20 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
   const limits = {
     dishTypeLimit: planLimits.dishTypes,
     dishLimit: planLimits.dishes,
-    waiterLimit: planLimits.waiters
+    waiterLimit: planLimits.waiters,
+    tableLimit: planLimits.tables
   };
+
+  const normalizedExpiry = input.subscriptionPlan === 'FREE'
+    ? null
+    : (input.subscriptionExpiry || null);
+
   try {
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       {
         subscriptionPlan: input.subscriptionPlan,
-        subscriptionExpiry: input.subscriptionExpiry,
+        subscriptionExpiry: normalizedExpiry,
         ...limits,
         updatedAt: new Date()
       },

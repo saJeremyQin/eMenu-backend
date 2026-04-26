@@ -270,15 +270,17 @@ await dish.save();
 ```javascript
 // config/constants.js
 export const SUBSCRIPTION_LIMITS = {
-  BASIC: {
+  FREE: {
     dishTypes: 2,
     dishes: 10,
-    waiters: 2
+    waiters: 1,
+    tables: 20
   },
-  PREMIUM: {
+  PRO: {
     dishTypes: 20,
     dishes: 200,
-    waiters: 20
+    waiters: 20,
+    tables: 100
   }
 };
 ```
