@@ -9,8 +9,8 @@
 export const SUBSCRIPTION_LIMITS = {
   FREE: {
     restaurants: 1,
-    dishTypes: 2,
-    dishes: 10,
+    dishTypes: 20,
+    dishes: 100,
     waiters: 1,
     tables: 20
   },
