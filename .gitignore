@@ -3,6 +3,16 @@ lambda.zip
 terraform.tfstate
 terraform.tfstate.*
 
+# Terraform plans and local variable files can contain secret values.
+# Per-environment config (e.g. prod.tfvars) may be committed, but never secrets.
+tfplan
+*.tfplan
+plan.txt
+terraform.tfvars
+*.auto.tfvars
+.env
+.env.*
+
 node_modules/
 
 # Lambda function zip files (build artifacts)
