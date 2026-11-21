@@ -10,7 +10,9 @@ import { connectDb } from './utils/db.js';
 
 export const handler = async (event, context) => {
   try {
-    console.log('Received AppSync event:', JSON.stringify(event, null, 2));
+    // Don't log the whole event: it holds the caller's JWT (request.headers) and
+    // resolver arguments such as registerWaiter's password.
+    console.log('Received AppSync event:', event.typeName, event.fieldName);
 
     await connectDb();
 
@@ -24,7 +26,6 @@ export const handler = async (event, context) => {
         console.error('Auth Check: No identity found or missing sub in AppSync event context.');
         throw new Error('Authentication required.');
       }
-      console.log('Auth Check: Identity object from AppSync:', JSON.stringify(identity, null, 2));
       console.log('Auth Check: User ID (sub):', identity.sub);
     } else {
       console.log('Auth Check: Skipping for registerWaiter (API Key access)');

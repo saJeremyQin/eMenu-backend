@@ -11,14 +11,11 @@ import User from '/opt/nodejs/models/user.js';
  */
 export async function getRestaurantIdFromIdentity(identity) {
   const cognitoId = identity?.sub || identity?.claims?.sub;
-  console.log("DEBUG: cognitoId is", cognitoId);
   if (!cognitoId) throw new Error("Cognito identity sub not found.");
 
   const user = await User.findOne({ cognitoId });
   if (!user) {
-    const count = await User.countDocuments();
-    const allUsers = await User.find().limit(5);
-    console.error("DEBUG: First 5 users in DB:", allUsers);
+    console.error("User not found for cognitoId:", cognitoId);
     throw new Error("User not found.");
   }
   if (!user.restaurantId) throw new Error("User is not associated with a restaurant.");
