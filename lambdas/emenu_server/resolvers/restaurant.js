@@ -91,7 +91,6 @@ export async function createRestaurant(args, identity) {
 export async function updateRestaurantInfo(args, identity) {
   console.log('Executing updateRestaurantInfo...');
   console.log('Args:', JSON.stringify(args, null, 2));
-  console.log('Identity:', JSON.stringify(identity, null, 2));
   await requireRole(identity, ['boss']);
   try {
     const restaurantId = await getRestaurantIdFromIdentity(identity);
@@ -137,8 +136,10 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
   if (!restaurantId) {
     throw new Error('Restaurant not found for this user');
   }
-  if (!['FREE', 'PRO'].includes(input.subscriptionPlan)) {
-    throw new Error('Invalid subscription plan');
+  // Clients may only switch to FREE. PRO is granted by the Stripe webhook after a
+  // verified payment, never by a client-supplied plan or paymentTransactionId.
+  if (input.subscriptionPlan !== 'FREE') {
+    throw new Error('PERMISSION_DENIED: Upgrading to PRO requires a completed payment.');
   }
   const planLimits = SUBSCRIPTION_LIMITS[input.subscriptionPlan];
   if (!planLimits) {
@@ -151,16 +152,12 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
     tableLimit: planLimits.tables
   };
 
-  const normalizedExpiry = input.subscriptionPlan === 'FREE'
-    ? null
-    : (input.subscriptionExpiry || null);
-
   try {
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       {
-        subscriptionPlan: input.subscriptionPlan,
-        subscriptionExpiry: normalizedExpiry,
+        subscriptionPlan: 'FREE',
+        subscriptionExpiry: null,
         ...limits,
         updatedAt: new Date()
       },
@@ -168,9 +165,6 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
     );
     if (!updatedRestaurant) {
       throw new Error('Restaurant not found');
-    }
-    if (input.paymentTransactionId) {
-      console.log('Payment transaction recorded:', input.paymentTransactionId);
     }
     const resultObject = updatedRestaurant.toObject();
     resultObject.id = resultObject._id.toString();

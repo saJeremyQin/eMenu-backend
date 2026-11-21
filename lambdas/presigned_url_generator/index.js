@@ -1,13 +1,22 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import jwt from 'jsonwebtoken';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { randomUUID } from 'crypto';
 import { buildS3AndProcessedKeys } from './image_uploader/index.js';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION || "ap-southeast-2" });
 
+// Verifies signature, expiry, issuer (our user pool) and audience (our app clients).
+// JWKS keys are fetched once and cached for the lifetime of the Lambda container.
+const idTokenVerifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.COGNITO_USER_POOL_ID,
+  tokenUse: 'id',
+  clientId: (process.env.COGNITO_CLIENT_IDS || '').split(',').filter(Boolean),
+});
+
 export const handler = async (event) => {
-  console.log('Received event:', JSON.stringify(event, null, 2));
+  // Don't log the event: its body carries the user's ID token.
+  console.log('Received presign request:', event.requestContext?.http?.method || event.httpMethod);
 
   // 处理 OPTIONS 预检请求
   if (event.requestContext?.http?.method === 'OPTIONS' || event.httpMethod === 'OPTIONS') {
@@ -69,21 +78,12 @@ export const handler = async (event) => {
       };
     }
 
-    console.log('Received authToken length:', authToken.length);
-    console.log('AuthToken starts with:', authToken.substring(0, 20) + '...');
-
-    // 从 Cognito JWT 中提取用户信息
-    // 注意：在生产环境中，你应该验证 JWT 签名
-    const decodedToken = jwt.decode(authToken);
-    console.log('Decoded token:', decodedToken ? 'Success' : 'Failed');
-    if (decodedToken) {
-      console.log('Token issuer:', decodedToken.iss);
-      console.log('Token subject:', decodedToken.sub);
-      console.log('Token audience:', decodedToken.aud);
-    }
-    
-    if (!decodedToken || !decodedToken.sub) {
-      console.log('Token validation failed');
+    // 验证 Cognito ID token 签名，再信任其中的 sub
+    let verifiedToken;
+    try {
+      verifiedToken = await idTokenVerifier.verify(authToken);
+    } catch (err) {
+      console.log('Token verification failed:', err.name);
       return {
         statusCode: 401,
         body: JSON.stringify({
@@ -92,7 +92,7 @@ export const handler = async (event) => {
       };
     }
 
-    const userSub = decodedToken.sub;
+    const userSub = verifiedToken.sub;
     console.log(`Generating presigned URL for user: ${userSub}`);
 
     // 生成唯一文件名

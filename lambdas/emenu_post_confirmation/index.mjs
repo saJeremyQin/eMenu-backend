@@ -32,7 +32,7 @@ const connectDb = async () => {
 
       const response = await ssmClient.send(command);
       cachedDbUri = response.Parameter?.Value;
-      console.log('The cachedDbUri is %s', cachedDbUri);
+      // Never log the URI: it contains the database password.
       
       console.log("✅ Successfully retrieved DB URI from SSM.");      
     } catch (error) {
@@ -43,7 +43,7 @@ const connectDb = async () => {
 
   try {
     console.log("🌐 Attempting to connect to MongoDB...");
-    await mongoose.connect(cachedDbUri);
+    await mongoose.connect(cachedDbUri, { serverSelectionTimeoutMS: 5000 });
     console.log("✅ MongoDB connected successfully!");
   } catch (dbError) {
     console.error("❌ MongoDB connection failed:", dbError);
@@ -54,7 +54,8 @@ const connectDb = async () => {
 
 export const handler = async (event) => {
     console.log("--- Post Confirmation Lambda Started ---");
-    console.log("Full event received:", JSON.stringify(event, null, 2));
+    // Don't log the whole event: it holds the user's email and other attributes.
+    console.log("Trigger:", event.triggerSource, "clientId:", event.callerContext?.clientId);
 
     // Always attempt to connect to the database before processing logic
     try {

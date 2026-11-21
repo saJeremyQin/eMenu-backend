@@ -258,7 +258,11 @@ export async function confirmOrderItems(args, identity) {
   const waiter = accessContext.caller;
   const input = args.input;
   
-  const { tableNumber: rawTableNumber, dinerId = '0', tabId = 'tab-0', items, isFromCustomerScan = false } = input;
+  const { tableNumber: rawTableNumber, dinerId = '0', tabId = 'tab-0', items } = input;
+  // Waiters always confirm items directly. input.isFromCustomerScan is ignored so a
+  // client cannot create unconfirmed (ORDERED) items; customer ordering (v2) will use
+  // its own resolver that sets this server-side.
+  const isFromCustomerScan = false;
   
   if (!rawTableNumber || !items || items.length === 0) {
     throw new Error('Table number and order items are required.');

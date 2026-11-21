@@ -500,6 +500,9 @@ resource "aws_lambda_function" "presigned_url_generator" {
     variables = {
       S3_RESTAURANT_LOGO_BUCKET = aws_s3_bucket.restaurant_assets.bucket
       S3_DISH_IMAGES_BUCKET = aws_s3_bucket.dish_images.bucket
+      # Used to verify the caller's Cognito ID token
+      COGNITO_USER_POOL_ID = aws_cognito_user_pool.emenu_user_pool.id
+      COGNITO_CLIENT_IDS   = join(",", [aws_cognito_user_pool_client.emenu_web_client.id, aws_cognito_user_pool_client.emenu_app_client.id])
     }
   }
 
@@ -526,7 +529,7 @@ resource "aws_lambda_function_url" "presigned_url_generator" {
   cors {
     allow_credentials = false
     allow_origins     = ["*"]
-    allow_methods     = ["GET", "POST", "PUT", "DELETE", "HEAD", "PATCH"]
+    allow_methods     = ["POST"]
     allow_headers     = [
       "authorization",
       "content-type", 

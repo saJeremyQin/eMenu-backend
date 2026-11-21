@@ -217,7 +217,7 @@ input ConfirmOrderItemsInput {
   dinerId: String!               # "0" (整桌或第一人) / "1" / "2" / "3"...
   tabId: String!                 # "tab-0" / "tab-1" / "tab-2"...
   items: [OrderItemInput!]!      # 要送厨的菜品
-  isFromCustomerScan: Boolean    # 是否来自顾客扫码 (默认 false)
+  isFromCustomerScan: Boolean    # Ignored by the resolver (always false); kept so existing app builds don't fail validation
 }
 
 # ====================================================================

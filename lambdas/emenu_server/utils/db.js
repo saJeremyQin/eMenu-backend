@@ -35,8 +35,7 @@ export const connectDb = async () => {
 
       const response = await ssmClient.send(command);
       cachedDbUri = response.Parameter?.Value;
-      console.log('The cachedDbUri is %s', cachedDbUri);
-
+      // Never log the URI: it contains the database password.
       console.log("✅ Successfully retrieved DB URI from SSM.");
     } catch (error) {
       console.error("❌ Failed to retrieve DB URI from SSM:", error);
@@ -46,7 +45,9 @@ export const connectDb = async () => {
 
   try {
     console.log("🌐 Attempting to connect to MongoDB...");
-    await mongoose.connect(cachedDbUri);
+    // Fail fast (default is 30s, the same as the Lambda timeout) so an unreachable
+    // cluster, e.g. a blocked Atlas IP access list, surfaces as a clear error.
+    await mongoose.connect(cachedDbUri, { serverSelectionTimeoutMS: 5000 });
     console.log("✅ MongoDB connected successfully!");
   } catch (dbError) {
     console.error("❌ MongoDB connection failed:", dbError);
