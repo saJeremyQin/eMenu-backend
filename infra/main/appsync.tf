@@ -32,7 +32,7 @@ resource "aws_appsync_datasource" "emenu_datasource" {
   lambda_config {
     function_arn = aws_lambda_function.emenu_server.arn
   }
-    
+
   // depends on the update of schema
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
@@ -60,7 +60,7 @@ resource "aws_appsync_resolver" "get_user_query" {
   request_template  = file("${path.module}/mapping-templates/getUser-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
-  depends_on = [aws_appsync_graphql_api.emenu_apis]  
+  depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
 // Add resolver for getUserByCognito query
@@ -84,7 +84,7 @@ resource "aws_appsync_resolver" "create_restaurant_mutation" {
 
   request_template  = file("${path.module}/mapping-templates/createRestaurant-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
-  
+
   depends_on = [aws_appsync_graphql_api.emenu_apis]
 }
 
@@ -250,7 +250,7 @@ resource "aws_appsync_resolver" "toggle_dish_status_mutation" {
   type        = "Mutation"
   data_source = aws_appsync_datasource.emenu_datasource.name
 
-    request_template  = file("${path.module}/mapping-templates/toggleDishStatus-request.vtl")
+  request_template  = file("${path.module}/mapping-templates/toggleDishStatus-request.vtl")
   response_template = file("${path.module}/mapping-templates/common-response.vtl")
 
   depends_on = [aws_appsync_graphql_api.emenu_apis]
@@ -385,26 +385,26 @@ resource "aws_appsync_resolver" "register_waiter_mutation" {
 }
 // Create a role for AppSync to invoke lambda
 resource "aws_iam_role" "appsync_lambda_role" {
-    name = "appsync-lambda-invoke-role"
-    assume_role_policy = jsonencode({
-        Version = "2012-10-17",
-        Statement = [
-            {
-                Effect = "Allow",
-                Principal = {
-                    Service = "appsync.amazonaws.com"
-                },
-                Action = "sts:AssumeRole"
-            }
-        ]
-    })
+  name = "appsync-lambda-invoke-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "appsync.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role_policy" "appsync_invoke_lambda" {
-    name = "appsync-invoke-lambda"
-    role = aws_iam_role.appsync_lambda_role.id
+  name = "appsync-invoke-lambda"
+  role = aws_iam_role.appsync_lambda_role.id
 
-    policy = jsonencode({
+  policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {

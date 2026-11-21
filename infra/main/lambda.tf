@@ -38,17 +38,17 @@ resource "aws_lambda_function" "emenu_server" {
   role          = aws_iam_role.lambda_exec.arn
   timeout       = 30
   memory_size   = 128
-    
+
   environment {
     variables = {
-      DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name       //Pass the name of Parameter
+      DB_PARAM_NAME       = aws_ssm_parameter.db_connect_string_param.name //Pass the name of Parameter
       WAITER_USER_POOL_ID = aws_cognito_user_pool.emenu_user_pool.id       //Cognito User Pool ID for waiter registration
-      ENVIRONMENT = var.environment
+      ENVIRONMENT         = var.environment
     }
   }
 
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
-  
+
   # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
   source_code_hash = data.aws_s3_object.emenu_server_code.etag
 }
@@ -64,24 +64,24 @@ data "aws_s3_object" "emenu_server_code" {
 # ----------------------------------------------------------
 resource "aws_lambda_function" "emenu_post_confirmation" {
   function_name = "emenu_post_confirmation"
-  s3_bucket     =  data.aws_s3_bucket.lambda_code.id
+  s3_bucket     = data.aws_s3_bucket.lambda_code.id
   s3_key        = "lambdas/emenu_post_confirmation/emenu_post_confirmation.zip"
 
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 10
-  memory_size   = 128
+  handler     = "index.handler"
+  runtime     = "nodejs20.x"
+  timeout     = 10
+  memory_size = 128
 
   role = aws_iam_role.cognito_trigger.arn
 
   environment {
     variables = {
-      DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name       //Pass the name of Parameter
+      DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name //Pass the name of Parameter
     }
   }
 
   layers = [aws_lambda_layer_version.common_mongoose_models.arn]
-  
+
   # 使用 S3 对象的 etag 作为 source_code_hash 来检测文件变化
   source_code_hash = data.aws_s3_object.emenu_post_confirmation_code.etag
 }
@@ -144,8 +144,8 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 
 // add the basic lambda exectuion privillage to cognito_trigger
 resource "aws_iam_role_policy_attachment" "cognito_lambda_execution" {
-  role = aws_iam_role.cognito_trigger.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" 
+  role       = aws_iam_role.cognito_trigger.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 // add the 'AdminAddUserToGroup' to cognito_trigger
@@ -180,7 +180,7 @@ resource "aws_iam_role_policy" "emenu_server_ssm_access" {
         Action = [
           "ssm:GetParameter",
           "ssm:GetParameters",
-          "ssm:GetParametersByPath",          // Optional when need retrieve multi parameters under pathe
+          "ssm:GetParametersByPath", // Optional when need retrieve multi parameters under pathe
         ],
         Resource = aws_ssm_parameter.db_connect_string_param.arn
       },
@@ -188,11 +188,11 @@ resource "aws_iam_role_policy" "emenu_server_ssm_access" {
         Effect = "Allow",
         Action = [
           "kms:Decrypt"
-        ], 
-        Resource = "arn:aws:kms:ap-southeast-2:205930647566:key/9699535c-75c7-4ba3-96bb-2848475b1eda"
+        ],
+        Resource = data.aws_kms_alias.ssm.target_key_arn
       }
     ]
-  }) 
+  })
 }
 
 resource "aws_iam_role_policy" "emenu_server_ses_access" {
@@ -210,7 +210,7 @@ resource "aws_iam_role_policy" "emenu_server_ses_access" {
         Resource = "arn:aws:ses:ap-southeast-2:205930647566:identity/*"
       }
     ]
-  }) 
+  })
 }
 
 // Grant Cognito User Pool admin permissions required by registerWaiter
@@ -231,7 +231,7 @@ resource "aws_iam_role_policy" "emenu_server_cognito_admin_access" {
         Resource = aws_cognito_user_pool.emenu_user_pool.arn
       }
     ]
-  }) 
+  })
 }
 
 resource "aws_iam_role_policy" "emenu_post_confirmation_ssm_access" {
@@ -245,20 +245,20 @@ resource "aws_iam_role_policy" "emenu_post_confirmation_ssm_access" {
         Action = [
           "ssm:GetParameter",
           "ssm:GetParameters",
-          "ssm:GetParametersByPath",          // Optional when need retrieve multi parameters under pathe
-          "kms:Decrypt"                       // Only useful for SecureString
+          "ssm:GetParametersByPath", // Optional when need retrieve multi parameters under pathe
+          "kms:Decrypt"              // Only useful for SecureString
         ],
-               Resource = aws_ssm_parameter.db_connect_string_param.arn
+        Resource = aws_ssm_parameter.db_connect_string_param.arn
       },
       {
         Effect = "Allow",
         Action = [
           "kms:Decrypt"
-        ], 
-        Resource = "arn:aws:kms:ap-southeast-2:205930647566:key/9699535c-75c7-4ba3-96bb-2848475b1eda"
+        ],
+        Resource = data.aws_kms_alias.ssm.target_key_arn
       }
     ]
-  }) 
+  })
 }
 
 # ----------------------------------------------------------
@@ -322,14 +322,14 @@ resource "aws_cloudwatch_log_group" "image_processor_logs" {
 }
 
 resource "aws_lambda_function" "image_processor" {
-  s3_bucket        = data.aws_s3_bucket.lambda_code.bucket
-  s3_key          = "lambdas/image_processor/image_processor.zip"
-  function_name   = "emenu-image-processor-${var.environment}"
-  role           = aws_iam_role.image_processor_role.arn
-  handler        = "index.handler"
-  runtime        = "nodejs20.x"
-  timeout        = 60
-  memory_size    = 512
+  s3_bucket     = data.aws_s3_bucket.lambda_code.bucket
+  s3_key        = "lambdas/image_processor/image_processor.zip"
+  function_name = "emenu-image-processor-${var.environment}"
+  role          = aws_iam_role.image_processor_role.arn
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"
+  timeout       = 60
+  memory_size   = 512
 
   environment {
     variables = {
@@ -382,14 +382,14 @@ resource "aws_s3_bucket_notification" "image_upload_notification" {
     filter_prefix       = "public/restaurant-logos/"
     filter_suffix       = ".jpeg"
   }
-  
+
   lambda_function {
     lambda_function_arn = aws_lambda_function.image_processor.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "public/restaurant-logos/"
     filter_suffix       = ".jpg"
   }
-  
+
   lambda_function {
     lambda_function_arn = aws_lambda_function.image_processor.arn
     events              = ["s3:ObjectCreated:*"]
@@ -488,18 +488,18 @@ resource "aws_cloudwatch_log_group" "presigned_url_generator_logs" {
 
 # Presigned URL Generator Lambda Function
 resource "aws_lambda_function" "presigned_url_generator" {
-  s3_bucket      = data.aws_s3_bucket.lambda_code.bucket
-  s3_key         = "lambdas/presigned_url_generator/presigned_url_generator.zip"
-  function_name  = "emenu-presigned-url-generator-${var.environment}"
-  role           = aws_iam_role.presigned_url_role.arn
-  handler        = "index.handler"
-  runtime        = "nodejs18.x"
-  timeout        = 30
+  s3_bucket     = data.aws_s3_bucket.lambda_code.bucket
+  s3_key        = "lambdas/presigned_url_generator/presigned_url_generator.zip"
+  function_name = "emenu-presigned-url-generator-${var.environment}"
+  role          = aws_iam_role.presigned_url_role.arn
+  handler       = "index.handler"
+  runtime       = "nodejs18.x"
+  timeout       = 30
 
   environment {
     variables = {
       S3_RESTAURANT_LOGO_BUCKET = aws_s3_bucket.restaurant_assets.bucket
-      S3_DISH_IMAGES_BUCKET = aws_s3_bucket.dish_images.bucket
+      S3_DISH_IMAGES_BUCKET     = aws_s3_bucket.dish_images.bucket
       # Used to verify the caller's Cognito ID token
       COGNITO_USER_POOL_ID = aws_cognito_user_pool.emenu_user_pool.id
       COGNITO_CLIENT_IDS   = join(",", [aws_cognito_user_pool_client.emenu_web_client.id, aws_cognito_user_pool_client.emenu_app_client.id])
@@ -530,13 +530,13 @@ resource "aws_lambda_function_url" "presigned_url_generator" {
     allow_credentials = false
     allow_origins     = ["*"]
     allow_methods     = ["POST"]
-    allow_headers     = [
+    allow_headers = [
       "authorization",
-      "content-type", 
+      "content-type",
       "date",
       "keep-alive"
     ]
-    expose_headers    = ["date", "keep-alive"]
-    max_age          = 86400
+    expose_headers = ["date", "keep-alive"]
+    max_age        = 86400
   }
 }
