@@ -12,10 +12,10 @@ resource "aws_s3_bucket" "dish_images" {
   bucket = "emenu-dish-images-${var.environment}"
 
   tags = {
-    Name = "Dish Images"
+    Name        = "Dish Images"
     Environment = var.environment
   }
-  
+
 }
 
 resource "aws_s3_bucket_versioning" "dish_images_versioning" {
@@ -58,7 +58,7 @@ resource "aws_s3_bucket_public_access_block" "dish_images_pab" {
 }
 
 resource "aws_s3_bucket_policy" "dish_images_policy" {
-  bucket = aws_s3_bucket.dish_images.id
+  bucket     = aws_s3_bucket.dish_images.id
   depends_on = [aws_s3_bucket_public_access_block.dish_images_pab]
 
   policy = jsonencode({
@@ -79,8 +79,8 @@ resource "aws_s3_bucket_policy" "dish_images_policy" {
         Resource  = "${aws_s3_bucket.dish_images.arn}/public/dish-images/processed/*"
       },
       {
-        Sid    = "AuthenticatedUserUpload"
-        Effect = "Allow"
+        Sid       = "AuthenticatedUserUpload"
+        Effect    = "Allow"
         Principal = "*"
         Action = [
           "s3:PutObject"
@@ -130,7 +130,7 @@ resource "aws_s3_bucket_public_access_block" "restaurant_assets_pab" {
 }
 
 resource "aws_s3_bucket_policy" "restaurant_assets_policy" {
-  bucket = aws_s3_bucket.restaurant_assets.id
+  bucket     = aws_s3_bucket.restaurant_assets.id
   depends_on = [aws_s3_bucket_public_access_block.restaurant_assets_pab]
 
   policy = jsonencode({
@@ -151,8 +151,8 @@ resource "aws_s3_bucket_policy" "restaurant_assets_policy" {
         Resource  = "${aws_s3_bucket.restaurant_assets.arn}/public/restaurant-logos/processed/*"
       },
       {
-        Sid    = "AuthenticatedUserUpload"
-        Effect = "Allow"
+        Sid       = "AuthenticatedUserUpload"
+        Effect    = "Allow"
         Principal = "*"
         Action = [
           "s3:PutObject"
