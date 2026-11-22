@@ -1,4 +1,5 @@
 import User from '/opt/nodejs/models/user.js';
+import { findUserForIdentity } from '../utils/auth.js';
 
 // getUser 查询（按 cognitoId 查找，兼容 admin 权限）
 export async function getUser(args, identity) {
@@ -20,7 +21,10 @@ export async function getUser(args, identity) {
   }
 
   try {
-    const user = await User.findOne({ cognitoId: requestedCognitoId });
+    // For the caller's own record, recreate a missing boss record (see findUserForIdentity).
+    const user = requestedCognitoId === callerCognitoId
+      ? await findUserForIdentity(identity)
+      : await User.findOne({ cognitoId: requestedCognitoId });
     if (!user) {
       console.error(`User with cognitoId ${requestedCognitoId} not found.`);
       return null;
@@ -59,7 +63,10 @@ export async function getUserByCognito(args, identity) {
   }
 
   try {
-    const user = await User.findOne({ cognitoId: requestedCognitoId });
+    // For the caller's own record, recreate a missing boss record (see findUserForIdentity).
+    const user = requestedCognitoId === callerCognitoId
+      ? await findUserForIdentity(identity)
+      : await User.findOne({ cognitoId: requestedCognitoId });
     if (!user) {
       console.error(`User with cognitoId ${requestedCognitoId} not found.`);
       return null;

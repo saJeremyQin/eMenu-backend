@@ -1,6 +1,6 @@
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
-import { getRestaurantIdFromIdentity, requireRole } from '../utils/auth.js';
+import { getRestaurantIdFromIdentity, requireRole, findUserForIdentity } from '../utils/auth.js';
 import { SUBSCRIPTION_LIMITS } from '../config/constants.js';
 
 // 查询：获取当前用户所属的餐厅信息
@@ -40,6 +40,10 @@ export async function createRestaurant(args, identity) {
   } catch (dbFindError) {
     console.error('Error checking for existing restaurant:', dbFindError);
     throw new Error(`Database query error: ${dbFindError.message}`);
+  }
+  // Make sure the boss has a user record, so the restaurant gets linked to it below.
+  if (!(await findUserForIdentity(identity))) {
+    throw new Error('User not found.');
   }
   const input = args?.input || args;
   console.log('Input for new restaurant:', JSON.stringify(input, null, 2));

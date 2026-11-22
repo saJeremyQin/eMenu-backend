@@ -57,15 +57,6 @@ export const handler = async (event) => {
     // Don't log the whole event: it holds the user's email and other attributes.
     console.log("Trigger:", event.triggerSource, "clientId:", event.callerContext?.clientId);
 
-    // Always attempt to connect to the database before processing logic
-    try {
-        await connectDb();
-    } catch (err) {
-        console.error("❌ Failed to connect to DB for Post Confirmation Lambda:", err);
-        // Even if DB connection fails, we should return the event to avoid hanging the Cognito registration flow
-        return event;
-    }
-
     const userPoolId = event.userPoolId;
     const username = event.userName; // This will be the email if email is the login method
     const userSub = event.request.userAttributes.sub; // The user's unique ID (sub)
@@ -97,7 +88,17 @@ export const handler = async (event) => {
         console.log(`Client ID did NOT match. Expected: ${targetClientId}, Received: ${event.callerContext ? event.callerContext.clientId : 'undefined'}. Assigning default role '${assignedRole}'.`);
     }
 
-    // 2. Insert User record into MongoDB
+    // 2. Insert User record into MongoDB.
+    // The group step above runs first and needs no DB, so a DB outage costs only this
+    // record; emenu-server recreates a missing boss record on first login (utils/auth.js).
+    try {
+        await connectDb();
+    } catch (err) {
+        console.error("❌ Failed to connect to DB for Post Confirmation Lambda:", err);
+        // Return the event so Cognito still completes the sign-up.
+        return event;
+    }
+
     try {
         // Check if the user already exists (by cognitoId or email to handle migration cases)
         const existingUser = await User.findOne({ 
