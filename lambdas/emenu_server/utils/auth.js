@@ -3,6 +3,46 @@
  * 处理用户角色验证和餐厅关联
  */
 import User from '/opt/nodejs/models/user.js';
+import { AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { cognitoClient } from '../config/aws-clients.js';
+
+/**
+ * Find the Mongo user for the caller. If a boss has no record (e.g. the
+ * post-confirmation trigger couldn't reach the DB), recreate it.
+ * Safe because cognito:groups comes from the Cognito-signed token, and only the
+ * post-confirmation trigger adds users to the 'boss' group.
+ * @param {Object} identity - AppSync identity
+ * @returns {Promise<Object|null>} Mongoose user document, or null
+ */
+export async function findUserForIdentity(identity) {
+  const cognitoId = identity?.sub || identity?.claims?.sub;
+  if (!cognitoId) throw new Error('Cognito identity sub not found.');
+
+  const user = await User.findOne({ cognitoId });
+  if (user) return user;
+
+  const groups = identity?.claims?.['cognito:groups'] || identity?.groups || [];
+  if (!groups.includes('boss')) return null;
+
+  // Access tokens carry no email claim; read it from Cognito instead.
+  let email = identity?.claims?.email;
+  if (!email) {
+    const res = await cognitoClient.send(new AdminGetUserCommand({
+      UserPoolId: process.env.WAITER_USER_POOL_ID,
+      Username: identity?.username || cognitoId,
+    }));
+    email = res.UserAttributes?.find(a => a.Name === 'email')?.Value;
+  }
+  if (!email) return null;
+
+  console.warn('Recreating missing boss user record for cognitoId:', cognitoId);
+  // Upsert so concurrent first requests don't create duplicates in the common case.
+  return User.findOneAndUpdate(
+    { cognitoId },
+    { $setOnInsert: { cognitoId, email, role: 'boss', isDeleted: false } },
+    { upsert: true, new: true }
+  );
+}
 
 /**
  * 从 AppSync identity 获取 restaurantId
@@ -10,12 +50,9 @@ import User from '/opt/nodejs/models/user.js';
  * @returns {Promise<string>} restaurantId
  */
 export async function getRestaurantIdFromIdentity(identity) {
-  const cognitoId = identity?.sub || identity?.claims?.sub;
-  if (!cognitoId) throw new Error("Cognito identity sub not found.");
-
-  const user = await User.findOne({ cognitoId });
+  const user = await findUserForIdentity(identity);
   if (!user) {
-    console.error("User not found for cognitoId:", cognitoId);
+    console.error("User not found for cognitoId:", identity?.sub || identity?.claims?.sub);
     throw new Error("User not found.");
   }
   if (!user.restaurantId) throw new Error("User is not associated with a restaurant.");
@@ -28,10 +65,8 @@ export async function getRestaurantIdFromIdentity(identity) {
  * @returns {Promise<'boss'|'waiter'>}
  */
 export async function getUserRole(identity) {
-  const cognitoId = identity?.sub || identity?.claims?.sub;
-  if (!cognitoId) throw new Error('Cognito identity sub not found.');
-  const user = await User.findOne({ cognitoId, isDeleted: false });
-  if (!user) throw new Error('User not found');
+  const user = await findUserForIdentity(identity);
+  if (!user || user.isDeleted) throw new Error('User not found');
   const role = typeof user.role === 'string' ? user.role.toLowerCase() : user.role;
   return role;
 }
