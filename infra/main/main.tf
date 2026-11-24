@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.73"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.14"
+    }
   }
 
   # Partial config: bucket and key come from backend-<env>.hcl
@@ -19,4 +23,7 @@ terraform {
 // set region
 provider "aws" {
   region = var.aws_region
+
+  # Refuse to run against the wrong account (e.g. dev.tfvars with prod credentials).
+  allowed_account_ids = [var.account_id]
 }

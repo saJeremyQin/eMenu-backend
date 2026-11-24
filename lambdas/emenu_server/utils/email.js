@@ -15,7 +15,7 @@ export async function sendInviteEmail(toEmail, inviteLink) {
   console.log("inviteLink is", inviteLink);
   
   const params = {
-    Source: "noreply@emenu.au",
+    Source: process.env.INVITE_FROM_EMAIL, // set per environment by Terraform (var.invite_from_email)
     Destination: { ToAddresses: [toEmail] },
     Message: {
       Subject: { Data: "Emenu Waiter Invitation" },

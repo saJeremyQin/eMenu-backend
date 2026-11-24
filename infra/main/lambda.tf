@@ -1,7 +1,7 @@
 
-// Look up the bucket created in bootstrap
+// Look up the bucket created in bootstrap (infra/bootstrap)
 data "aws_s3_bucket" "lambda_code" {
-  bucket = "emenu-lambda-code-bucket"
+  bucket = "emenu-lambda-code-${var.environment}-${var.account_id}"
 }
 
 # --------------------------------------------------------------------------
@@ -44,6 +44,8 @@ resource "aws_lambda_function" "emenu_server" {
       DB_PARAM_NAME       = aws_ssm_parameter.db_connect_string_param.name //Pass the name of Parameter
       WAITER_USER_POOL_ID = aws_cognito_user_pool.emenu_user_pool.id       //Cognito User Pool ID for waiter registration
       ENVIRONMENT         = var.environment
+      ADMIN_URL           = var.admin_url         // waiter invite links
+      INVITE_FROM_EMAIL   = var.invite_from_email // sender of waiter invite emails
     }
   }
 
@@ -76,7 +78,8 @@ resource "aws_lambda_function" "emenu_post_confirmation" {
 
   environment {
     variables = {
-      DB_PARAM_NAME = aws_ssm_parameter.db_connect_string_param.name //Pass the name of Parameter
+      DB_PARAM_NAME       = aws_ssm_parameter.db_connect_string_param.name //Pass the name of Parameter
+      WEB_CLIENT_ID_PARAM = local.web_client_id_param                      // see ssm.tf
     }
   }
 
@@ -207,7 +210,7 @@ resource "aws_iam_role_policy" "emenu_server_ses_access" {
           "ses:SendEmail",
           "ses:SendRawEmail"
         ],
-        Resource = "arn:aws:ses:ap-southeast-2:205930647566:identity/*"
+        Resource = "arn:aws:ses:${var.aws_region}:${var.account_id}:identity/*"
       }
     ]
   })
@@ -248,7 +251,10 @@ resource "aws_iam_role_policy" "emenu_post_confirmation_ssm_access" {
           "ssm:GetParametersByPath", // Optional when need retrieve multi parameters under pathe
           "kms:Decrypt"              // Only useful for SecureString
         ],
-        Resource = aws_ssm_parameter.db_connect_string_param.arn
+        Resource = [
+          aws_ssm_parameter.db_connect_string_param.arn,
+          "arn:aws:ssm:${var.aws_region}:${var.account_id}:parameter${local.web_client_id_param}",
+        ]
       },
       {
         Effect = "Allow",
