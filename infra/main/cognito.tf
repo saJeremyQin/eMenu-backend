@@ -25,10 +25,11 @@ resource "aws_cognito_user_pool" "emenu_user_pool" {
     allow_admin_create_user_only = false
   }
 
+  # var.cognito_email = null -> Cognito's built-in sender; otherwise this account's SES.
   email_configuration {
-    email_sending_account = "DEVELOPER"
-    from_email_address    = "jeremyqin.aus@hotmail.com"
-    source_arn            = "arn:aws:ses:ap-southeast-2:205930647566:identity/jeremyqin.aus@hotmail.com"
+    email_sending_account = var.cognito_email == null ? "COGNITO_DEFAULT" : "DEVELOPER"
+    from_email_address    = var.cognito_email == null ? null : var.cognito_email.from
+    source_arn            = var.cognito_email == null ? null : "arn:aws:ses:${var.aws_region}:${var.account_id}:identity/${var.cognito_email.ses_identity}"
   }
 
   verification_message_template {
@@ -57,7 +58,7 @@ resource "aws_cognito_user_pool" "emenu_user_pool" {
   # }                                      // used to set nickname
 
   tags = {
-    environment = "dev"
+    environment = var.environment
     project     = "emenu"
   }
 }
@@ -76,8 +77,8 @@ resource "aws_cognito_user_pool_client" "emenu_web_client" {
   supported_identity_providers  = ["COGNITO"]
   prevent_user_existence_errors = "ENABLED"
 
-  callback_urls = ["http://localhost:5173/callback"]
-  logout_urls   = ["http://localhost:5173/logout"]
+  callback_urls = ["${var.admin_url}/callback"]
+  logout_urls   = ["${var.admin_url}/logout"]
 }
 
 resource "aws_cognito_user_pool_client" "emenu_app_client" {

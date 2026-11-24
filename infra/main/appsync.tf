@@ -17,9 +17,17 @@ resource "aws_appsync_graphql_api" "emenu_apis" {
 }
 
 // Create API Key for AppSync (for unauthenticated access like registerWaiter)
+# The key's expiry only moves when this rotates (every 300 days), instead of on every
+# plan like timestamp() did. A deploy after the rotation date extends the key in place
+# (same key value). AppSync allows at most 365 days ahead, so expiry = rotation + 60 days.
+# If nothing is deployed for ~360 days the key expires: deploy, or bump it with -replace.
+resource "time_rotating" "api_key" {
+  rotation_days = 300
+}
+
 resource "aws_appsync_api_key" "emenu_api_key" {
   api_id  = aws_appsync_graphql_api.emenu_apis.id
-  expires = timeadd(timestamp(), "8760h") // Valid for 1 year (365 days * 24 hours)
+  expires = timeadd(time_rotating.api_key.rotation_rfc3339, "1440h") # rotation date + 60 days
 }
 
 // Configure the lambda function as a datasource for AppSync apis

@@ -6,6 +6,20 @@ import { SSMClient, GetParameterCommand} from "@aws-sdk/client-ssm";
 
 // Initialize AWS SDK client outside the handler to leverage Lambda warm starts.
 const cognitoClient = new CognitoIdentityProviderClient({ region: "ap-southeast-2" });
+const ssmClientForConfig = new SSMClient({ region: "ap-southeast-2" });
+
+// The admin site's app client ID (sign-ups from it become boss). Terraform writes it to
+// SSM per environment; the parameter name comes from WEB_CLIENT_ID_PARAM. Cached per container.
+let cachedWebClientId = null;
+const getWebClientId = async () => {
+  if (cachedWebClientId) return cachedWebClientId;
+  const paramName = process.env.WEB_CLIENT_ID_PARAM;
+  if (!paramName) throw new Error("WEB_CLIENT_ID_PARAM is not set in environment variables.");
+  const response = await ssmClientForConfig.send(new GetParameterCommand({ Name: paramName }));
+  cachedWebClientId = response.Parameter?.Value;
+  if (!cachedWebClientId) throw new Error(`SSM parameter ${paramName} is empty.`);
+  return cachedWebClientId;
+};
 
 let cachedDbUri = null;
 
@@ -64,7 +78,14 @@ export const handler = async (event) => {
 
     // Determine the user's initial role based on business logic
     let assignedRole = "waiter"; // Default role
-    const targetClientId = "4l90vqi7nfam318ci1tml91j3n";
+    let targetClientId;
+    try {
+        targetClientId = await getWebClientId();
+    } catch (err) {
+        // Without it we can't tell a boss from a waiter, so assign nothing rather than a wrong role.
+        console.error("❌ Could not read the web client ID from SSM; skipping role assignment:", err);
+        return event;
+    }
 
       // 1. Add user to the 'boss' user group (based on clientId)
     if (event.callerContext && event.callerContext.clientId && event.callerContext.clientId === targetClientId) {

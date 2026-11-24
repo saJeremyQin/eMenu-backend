@@ -44,8 +44,9 @@ export async function inviteWaiter(args, identity) {
   console.log('Executing inviteWaiter...');
   await requireRole(identity, ['boss']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const isDev = process.env.ENVIRONMENT === 'dev';
-  const baseUrl = isDev ? 'http://localhost:5173/waiter-register' : 'https://admin.emenu.au/waiter-register';
+  // ADMIN_URL is set per environment by Terraform (var.admin_url).
+  if (!process.env.ADMIN_URL) throw new Error('ADMIN_URL is not set in environment variables.');
+  const baseUrl = `${process.env.ADMIN_URL}/waiter-register`;
 
   const restaurant = await Restaurant.findById(restaurantId);
   if (!restaurant) throw new Error('Restaurant not found for this boss');
