@@ -110,10 +110,3 @@ resource "aws_cognito_user_group" "waiter_group" {
   description  = "waiter group"
   precedence   = 2
 }
-
-resource "aws_cognito_user_group" "demo_group" {
-  name         = "demo"
-  user_pool_id = aws_cognito_user_pool.emenu_user_pool.id
-  description  = "Demo user group"
-  precedence   = 3
-}

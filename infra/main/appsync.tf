@@ -26,8 +26,9 @@ resource "time_rotating" "api_key" {
 }
 
 resource "aws_appsync_api_key" "emenu_api_key" {
-  api_id  = aws_appsync_graphql_api.emenu_apis.id
-  expires = timeadd(time_rotating.api_key.rotation_rfc3339, "1440h") # rotation date + 60 days
+  api_id = aws_appsync_graphql_api.emenu_apis.id
+  # rotation date + 60 days, rounded down to the hour as AppSync stores it (else a diff every plan)
+  expires = formatdate("YYYY-MM-DD'T'hh':00:00Z'", timeadd(time_rotating.api_key.rotation_rfc3339, "1440h"))
 }
 
 // Configure the lambda function as a datasource for AppSync apis
