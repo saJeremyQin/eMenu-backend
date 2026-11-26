@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
-          fetch-depth: 2  # 获取最近2次提交以便比较
+          fetch-depth: 0  # full history, so the whole push can be compared (see "Check for code changes")
 
       # Lambda打包步骤
       - name: Setup Node.js
@@ -41,8 +41,15 @@ jobs:
         run: |
           echo "� Checking for code changes..."
           
-          # 获取变更的文件列表
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "all")
+          # Files changed by the whole push (all its commits), not just the last commit:
+          # compare with the commit dev pointed to before this push. If that commit is
+          # unknown (first push, force-push), package everything.
+          BEFORE="${{ github.event.before }}"
+          if [[ -n "$BEFORE" && ! "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            CHANGED_FILES=$(git diff --name-only "$BEFORE" HEAD)
+          else
+            CHANGED_FILES="all"
+          fi
           echo "Changed files: $CHANGED_FILES"
           
           # 初始化标志
