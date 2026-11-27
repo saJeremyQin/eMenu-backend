@@ -57,10 +57,8 @@ type Restaurant {
   subscriptionPlan: SubscriptionPlan!
   subscriptionExpiry: String # FREE 可为 null（永久有效）
 
-  # 业务限额字段 (从 MongoDB 动态读取)
-  dishTypeLimit: Int!
-  dishLimit: Int!
-  waiterLimit: Int!
+  # Highest table number the plan allows (FREE 8, PRO 999 = "unlimited").
+  # Derived from subscriptionPlan; dishes, dish types and waiters are unlimited.
   tableLimit: Int!
   
   # 关联: waiters 数组（存储 waiter 的 _id，查询时可 populate）
@@ -119,13 +117,14 @@ type OrderBatch {
   dinerId: String!           # 该批次对应的 diner ID (e.g., "0", "1", "2")
   items: [OrderItem!]!       # 该批次包含的菜品
   confirmedAt: String!       # 送厨时间 (ISO format)
+  confirmedBy: ID            # User ID of the waiter who sent this batch (null on older orders)
 }
 
 # 订单 Type (简化版)
 type Order {
   id: ID!                    # Mongoose _id
   restaurantId: ID!
-  waiterId: ID!              # 下单服务员的 User ID
+  waiterId: ID!              # User ID of the waiter currently serving the order (last to send items)
   tableNumber: String!       # 桌号
   
   # 分餐信息
@@ -146,6 +145,7 @@ type Order {
   isFromCustomerScan: Boolean # Whether the order is from customer scan
   scannedAt: String          # Customer scan time
   paidAt: AWSDateTime        # Payment time
+  paidBy: ID                 # User ID of the boss or waiter who took the payment
   createdAt: String!
   updatedAt: String!
 }

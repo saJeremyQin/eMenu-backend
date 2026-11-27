@@ -1,7 +1,16 @@
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 import { getRestaurantIdFromIdentity, requireRole, findUserForIdentity } from '../utils/auth.js';
-import { SUBSCRIPTION_LIMITS } from '../config/constants.js';
+import { getTableLimit } from '../config/constants.js';
+
+// Shape a restaurant for GraphQL: id from _id, and tableLimit derived from the plan
+// (limits are not stored on the restaurant).
+function toRestaurantResult(restaurant) {
+  const result = restaurant.toObject();
+  result.id = result._id.toString();
+  result.tableLimit = getTableLimit(result.subscriptionPlan);
+  return result;
+}
 
 // 查询：获取当前用户所属的餐厅信息
 export async function getRestaurant(args, identity) {
@@ -13,7 +22,7 @@ export async function getRestaurant(args, identity) {
       console.error(`Restaurant with id ${restaurantId} not found.`);
       return null;
     }
-    return restaurant.toJSON();
+    return toRestaurantResult(restaurant);
   } catch (err) {
     console.error(`Error fetching restaurant ${restaurantId}:`, err);
     throw new Error(`Failed to fetch restaurant: ${err.message}`);
@@ -32,8 +41,7 @@ export async function createRestaurant(args, identity) {
   try {
     const existing = await Restaurant.findOne({ bossId: cognitoId });
     if (existing) {
-      const existingObject = existing.toObject();
-      existingObject.id = existingObject._id.toString();
+      const existingObject = toRestaurantResult(existing);
       console.log('Returning existing restaurant:', JSON.stringify(existingObject, null, 2));
       return existingObject;
     }
@@ -52,7 +60,6 @@ export async function createRestaurant(args, identity) {
     console.error('Validation Error: Missing required fields for restaurant creation.');
     throw new Error('Restaurant name and address are required.');
   }
-  const freeLimits = SUBSCRIPTION_LIMITS.FREE;
   const restaurant = new Restaurant({
     name,
     logoUrl: input.logoUrl || input.image || null,
@@ -60,11 +67,7 @@ export async function createRestaurant(args, identity) {
     phone: input.phone || null,
     bossId: cognitoId,
     subscriptionPlan: "FREE",
-    subscriptionExpiry: null,
-    dishTypeLimit: freeLimits.dishTypes,
-    dishLimit: freeLimits.dishes,
-    waiterLimit: freeLimits.waiters,
-    tableLimit: freeLimits.tables
+    subscriptionExpiry: null
   });
   try {
     const savedRestaurant = await restaurant.save();
@@ -78,8 +81,7 @@ export async function createRestaurant(args, identity) {
     } catch (userUpdateError) {
       console.error('❌ Error updating user with restaurantId:', userUpdateError);
     }
-    const resultObject = savedRestaurant.toObject();
-    resultObject.id = resultObject._id.toString();
+    const resultObject = toRestaurantResult(savedRestaurant);
     console.log('Final object to be returned to AppSync:', JSON.stringify(resultObject, null, 2));
     return resultObject;
   } catch (saveError) {
@@ -120,8 +122,7 @@ export async function updateRestaurantInfo(args, identity) {
     if (!updatedRestaurant) {
       throw new Error('Restaurant not found');
     }
-    const resultObject = updatedRestaurant.toObject();
-    resultObject.id = resultObject._id.toString();
+    const resultObject = toRestaurantResult(updatedRestaurant);
     console.log('Restaurant info updated successfully:', JSON.stringify(resultObject, null, 2));
     return resultObject;
   } catch (error) {
@@ -145,24 +146,12 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
   if (input.subscriptionPlan !== 'FREE') {
     throw new Error('PERMISSION_DENIED: Upgrading to PRO requires a completed payment.');
   }
-  const planLimits = SUBSCRIPTION_LIMITS[input.subscriptionPlan];
-  if (!planLimits) {
-    throw new Error('Invalid subscription plan');
-  }
-  const limits = {
-    dishTypeLimit: planLimits.dishTypes,
-    dishLimit: planLimits.dishes,
-    waiterLimit: planLimits.waiters,
-    tableLimit: planLimits.tables
-  };
-
   try {
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       {
         subscriptionPlan: 'FREE',
         subscriptionExpiry: null,
-        ...limits,
         updatedAt: new Date()
       },
       { new: true }
@@ -170,8 +159,7 @@ export async function updateRestaurantSubscriptionPlan(args, identity) {
     if (!updatedRestaurant) {
       throw new Error('Restaurant not found');
     }
-    const resultObject = updatedRestaurant.toObject();
-    resultObject.id = resultObject._id.toString();
+    const resultObject = toRestaurantResult(updatedRestaurant);
     console.log('Restaurant subscription updated successfully:', JSON.stringify(resultObject, null, 2));
     return resultObject;
   } catch (error) {

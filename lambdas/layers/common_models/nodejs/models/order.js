@@ -28,11 +28,14 @@ const OrderBatchSchema = new mongoose.Schema({
   tabId: { type: String, required: true }, // 该批次对应的diner tab (e.g. "tab-1-0")
   dinerId: { type: String, required: true }, // 该批次对应的diner ID (e.g. "0", "1", "2")
   items: [OrderItemSchema], // 该批次的菜品
-  confirmedAt: { type: Date, required: true } // 这一批送厨的时间（仅作时间标记，无状态）
+  confirmedAt: { type: Date, required: true }, // 这一批送厨的时间（仅作时间标记，无状态）
+  confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } // waiter who sent this batch (missing on older orders)
 }, { _id: false });
 
 const OrderSchema = new mongoose.Schema({
   restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true },
+  // The waiter currently serving this order: moves to whoever last sent items to the kitchen.
+  // Tables are shared by all waiters of the restaurant; batches[].confirmedBy and paidBy keep the history.
   waiterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tableNumber: { type: String, required: true },
   
@@ -50,6 +53,7 @@ const OrderSchema = new mongoose.Schema({
   // 支付信息
   paidAmount: { type: Number, default: 0, comment: 'by cents' },
   paidAt: { type: Date },
+  paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // boss or waiter who took the payment
   
   // 扫码相关
   isFromCustomerScan: { type: Boolean, default: false },

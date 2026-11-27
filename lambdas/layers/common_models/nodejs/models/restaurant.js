@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
 // subscriptionPlan values must match SUBSCRIPTION_LIMITS in emenu_server/config/constants.js.
+// Plan limits are derived from subscriptionPlan there, not stored here. (Older documents
+// may still hold dishTypeLimit/dishLimit/waiterLimit/tableLimit; they are ignored.)
 const RestaurantSchema = new mongoose.Schema({
   bossId: { type: String, required: true }, // 改为 String 类型存储 cognitoId
   name: { type: String, required: true },
@@ -9,10 +11,6 @@ const RestaurantSchema = new mongoose.Schema({
   phone: String,
   subscriptionPlan: { type: String, enum: ['FREE', 'PRO'], required: true, default: 'FREE' },
   subscriptionExpiry: String, // 可为 null
-  dishTypeLimit: { type: Number, required: true, default: 3 },
-  dishLimit: { type: Number, required: true, default: 5 },
-  waiterLimit: { type: Number, required: true, default: 1 },
-  tableLimit: { type: Number, required: true, default: 20 },
   waiters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // User id数组
 }, { 
     timestamps: true,

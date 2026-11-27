@@ -10,102 +10,43 @@
  */
 import Order from '/opt/nodejs/models/order.js';
 import Dish from '/opt/nodejs/models/dish.js';
-import User from '/opt/nodejs/models/user.js';
 import Restaurant from '/opt/nodejs/models/restaurant.js';
-import { getRestaurantIdFromIdentity, getUserRole, requireRole } from '../utils/auth.js';
-import { SUBSCRIPTION_FEATURES } from '../config/constants.js';
+import { getRestaurantIdFromIdentity, findUserForIdentity, requireRole } from '../utils/auth.js';
+import { getTableLimit } from '../config/constants.js';
 import { v4 as uuidv4 } from 'uuid';
 
-async function validateAndNormalizeTableNumber(restaurantId, rawTableNumber) {
-  if (!rawTableNumber) {
-    throw new Error('Table number is required.');
-  }
-
-  const normalizedTableNumber = String(rawTableNumber).trim();
-  if (!/^\d+$/.test(normalizedTableNumber)) {
+// "07" and "7" are the same table, so table numbers are stored as plain integers in a string.
+function normalizeTableNumber(rawTableNumber) {
+  const value = String(rawTableNumber ?? '').trim();
+  if (!/^\d+$/.test(value) || Number.parseInt(value, 10) < 1) {
     throw new Error('Invalid table number format. Table number must be a positive integer.');
   }
-
-  const tableNumberValue = Number.parseInt(normalizedTableNumber, 10);
-  const restaurant = await Restaurant.findById(restaurantId).select('tableLimit');
-  if (!restaurant) {
-    throw new Error('Restaurant not found.');
-  }
-
-  const tableLimit = Number(restaurant.tableLimit || 0);
-  if (!Number.isInteger(tableLimit) || tableLimit < 1) {
-    throw new Error('Restaurant table limit is not configured correctly.');
-  }
-
-  if (tableNumberValue < 1 || tableNumberValue > tableLimit) {
-    throw new Error(`Table number out of allowed range. Current plan supports tables 1-${tableLimit}.`);
-  }
-
-  return normalizedTableNumber;
+  return String(Number.parseInt(value, 10));
 }
 
-async function buildOrderAccessContext(identity, restaurantId) {
-  const role = await getUserRole(identity);
-
-  if (role === 'boss') {
-    return {
-      role,
-      caller: null,
-      canPickupOtherWaiterOngoingOrders: true,
-    };
-  }
-
-  const caller = await User.findOne({
-    cognitoId: identity.sub,
-    restaurantId,
-    isDeleted: false,
-  });
-
-  if (!caller) {
-    throw new Error('User not found.');
-  }
-
+// The plan limits which tables can be OPENED. Orders already open on a table stay usable
+// (e.g. after a downgrade from PRO to FREE), so this is only checked when a table opens.
+async function assertTableAllowedByPlan(restaurantId, tableNumber) {
   const restaurant = await Restaurant.findById(restaurantId).select('subscriptionPlan');
   if (!restaurant) {
     throw new Error('Restaurant not found.');
   }
-
-  const canPickupOtherWaiterOngoingOrders =
-    SUBSCRIPTION_FEATURES[restaurant.subscriptionPlan]?.canPickupOtherWaiterOngoingOrders === true;
-
-  return {
-    role,
-    caller,
-    canPickupOtherWaiterOngoingOrders,
-  };
+  const limit = getTableLimit(restaurant.subscriptionPlan);
+  if (Number(tableNumber) > limit) {
+    throw new Error(restaurant.subscriptionPlan === 'FREE'
+      ? `Table ${tableNumber} isn't included in the FREE plan (tables 1-${limit}). Upgrade to PRO for unlimited tables.`
+      : `Table numbers go up to ${limit}.`);
+  }
 }
 
-function enforceWaiterOrderAccess(order, accessContext, options = {}) {
-  if (accessContext.role !== 'waiter') {
-    return;
-  }
-
-  const caller = accessContext.caller;
-  if (!caller) {
+// The signed-in boss or waiter of this restaurant. Tables are shared: every waiter of the
+// restaurant can see and serve every order in it, so there is no per-waiter access check.
+async function getCaller(identity, restaurantId) {
+  const caller = await findUserForIdentity(identity);
+  if (!caller || caller.isDeleted || String(caller.restaurantId) !== String(restaurantId)) {
     throw new Error('User not found.');
   }
-
-  const isOwner = String(order.waiterId) === String(caller._id);
-  if (isOwner) {
-    return;
-  }
-
-  const canPickupSharedPending =
-    accessContext.canPickupOtherWaiterOngoingOrders === true && order.status === 'PENDING';
-
-  if (canPickupSharedPending && options.allowReadSharedPending) {
-    if (options.takeoverOnSharedPending) {
-      order.waiterId = caller._id;
-    }
-    return;
-  }
-
-  throw new Error('This order belongs to another waiter. Your current plan does not allow this action.');
+  return caller;
 }
 
 // ====================================================================
@@ -119,7 +60,7 @@ export async function getOrder(args, identity) {
   console.log('Executing getOrder...');
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { id } = args;
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
+  await getCaller(identity, restaurantId);
   
   try {
     const order = await Order.findOne({ 
@@ -130,11 +71,6 @@ export async function getOrder(args, identity) {
     if (!order) {
       throw new Error('Order not found.');
     }
-
-    enforceWaiterOrderAccess(order, accessContext, {
-      allowReadSharedPending: true,
-      takeoverOnSharedPending: false,
-    });
     
     return order.toJSON();
   } catch (err) {
@@ -153,10 +89,10 @@ export async function getTableStatus(args, identity) {
   console.log('Executing getTableStatus...');
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { tableNumber: rawTableNumber } = args;
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
+  await getCaller(identity, restaurantId);
   
   try {
-    const normalizedTableNumber = await validateAndNormalizeTableNumber(restaurantId, rawTableNumber);
+    const normalizedTableNumber = normalizeTableNumber(rawTableNumber);
 
     // 1. 查找该桌所有 PENDING 订单（排除 PAID 和 CANCELLED）
     const filter = {
@@ -164,10 +100,6 @@ export async function getTableStatus(args, identity) {
       tableNumber: normalizedTableNumber,
       status: 'PENDING'
     };
-
-    if (accessContext.role === 'waiter' && !accessContext.canPickupOtherWaiterOngoingOrders) {
-      filter.waiterId = accessContext.caller._id;
-    }
 
     const activeOrders = await Order.find(filter).sort({ dinerId: 1, createdAt: 1 });
     
@@ -198,23 +130,17 @@ export async function getTableStatus(args, identity) {
 
 /**
  * 查询订单列表
- * - Boss 可以查看餐厅所有订单
- * - Waiter 只能查看自己创建的订单
+ * - Boss and waiters see all orders of their restaurant (tables are shared)
  * - 支持按状态、日期范围过滤
  */
 export async function listOrders(args, identity) {
   console.log('Executing listOrders...');
   const restaurantId = await getRestaurantIdFromIdentity(identity);
   const { status, dateFrom, dateTo } = args || {};
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
+  await getCaller(identity, restaurantId);
   
   try {
     const filter = { restaurantId };
-    
-    // FREE waiter 只看自己的订单；PRO waiter 可看餐厅订单
-    if (accessContext.role === 'waiter' && !accessContext.canPickupOtherWaiterOngoingOrders) {
-      filter.waiterId = accessContext.caller._id;
-    }
     
     if (status) {
       filter.status = status;
@@ -254,8 +180,7 @@ export async function confirmOrderItems(args, identity) {
   console.log('Executing confirmOrderItems...');
   await requireRole(identity, ['waiter']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
-  const waiter = accessContext.caller;
+  const waiter = await getCaller(identity, restaurantId);
   const input = args.input;
   
   const { tableNumber: rawTableNumber, dinerId = '0', tabId = 'tab-0', items } = input;
@@ -269,10 +194,7 @@ export async function confirmOrderItems(args, identity) {
   }
   
   try {
-    if (!waiter) {
-      throw new Error('User not found.');
-    }
-    const normalizedTableNumber = await validateAndNormalizeTableNumber(restaurantId, rawTableNumber);
+    const normalizedTableNumber = normalizeTableNumber(rawTableNumber);
     
     // 1. 验证菜品并构建OrderItem
     const orderItems = [];
@@ -318,16 +240,18 @@ export async function confirmOrderItems(args, identity) {
       status: 'PENDING'
     });
 
-    if (order) {
-      enforceWaiterOrderAccess(order, accessContext, {
-        allowReadSharedPending: true,
-        takeoverOnSharedPending: true,
-      });
-    }
-    
     let isNewOrder = false;
     
-    if (!order) {
+    if (order) {
+      // Shared tables: whoever sends items to the kitchen now serves this order.
+      order.waiterId = waiter._id;
+    } else {
+      // Opening a table (no open order on it yet) is limited by the plan.
+      const tableIsOpen = await Order.exists({ restaurantId, tableNumber: normalizedTableNumber, status: 'PENDING' });
+      if (!tableIsOpen) {
+        await assertTableAllowedByPlan(restaurantId, normalizedTableNumber);
+      }
+
       // ✅ 修复：检查同 tabId 下是否存在已取消订单
       // 场景：waiter 在同一桌台会话内取消订单后再次点单，
       // 若直接创建新 Order 会因唯一索引 (restaurantId,tableNumber,dinerId,tabId) 冲突报 E11000。
@@ -372,6 +296,7 @@ export async function confirmOrderItems(args, identity) {
       dinerId: String(dinerId),      // 确保是字符串  
       items: orderItems,
       confirmedAt: new Date(),       // 使用 Date 对象而不是 ISO string
+      confirmedBy: waiter._id,
     };
     
     console.log('🔧 Creating batch with fields:', {
@@ -428,7 +353,7 @@ export async function payOrder(args, identity) {
   console.log('Executing payOrder...');
   await requireRole(identity, ['boss', 'waiter']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
+  const caller = await getCaller(identity, restaurantId);
   const { orderId } = args;
   
   try {
@@ -440,14 +365,12 @@ export async function payOrder(args, identity) {
     if (!order) {
       throw new Error('Order not found.');
     }
-
-    enforceWaiterOrderAccess(order, accessContext, {
-      allowReadSharedPending: true,
-      takeoverOnSharedPending: true,
-    });
     
     if (order.status === 'PAID') {
       throw new Error('Order is already paid.');
+    }
+    if (order.status !== 'PENDING') {
+      throw new Error('Only open orders can be paid.');
     }
     
     // 计算应付金额（只算CONFIRMED且未CANCELLED的菜）
@@ -465,6 +388,7 @@ export async function payOrder(args, identity) {
     order.status = 'PAID';
     order.paidAmount = totalAmount;
     order.paidAt = new Date();
+    order.paidBy = caller._id;
     
     const updatedOrder = await order.save();
     
@@ -486,7 +410,7 @@ export async function cancelOrder(args, identity) {
   console.log('Executing cancelOrder...');
   await requireRole(identity, ['boss', 'waiter']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
+  await getCaller(identity, restaurantId);
   const { orderId } = args;
   
   try {
@@ -498,11 +422,6 @@ export async function cancelOrder(args, identity) {
     if (!order) {
       throw new Error('Order not found.');
     }
-
-    enforceWaiterOrderAccess(order, accessContext, {
-      allowReadSharedPending: true,
-      takeoverOnSharedPending: true,
-    });
     
     if (order.status === 'PAID') {
       throw new Error('Cannot cancel a paid order.');
@@ -531,7 +450,7 @@ export async function cancelOrderItem(args, identity) {
   console.log('Executing cancelOrderItem...');
   await requireRole(identity, ['boss', 'waiter']);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  const accessContext = await buildOrderAccessContext(identity, restaurantId);
+  await getCaller(identity, restaurantId);
   const { orderId, itemId, reason } = args;
   
   try {
@@ -543,11 +462,6 @@ export async function cancelOrderItem(args, identity) {
     if (!order) {
       throw new Error('Order not found.');
     }
-
-    enforceWaiterOrderAccess(order, accessContext, {
-      allowReadSharedPending: true,
-      takeoverOnSharedPending: true,
-    });
     
     if (order.status === 'PAID') {
       throw new Error('Cannot cancel item from a paid order.');
