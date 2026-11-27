@@ -6,34 +6,20 @@
 // ====================================================================
 // SUBSCRIPTION PLAN LIMITS CONSTANTS
 // ====================================================================
+// The only source of plan limits: they are derived from restaurant.subscriptionPlan,
+// never stored on the restaurant. Dishes, dish types and waiters are unlimited on
+// every plan; all waiters of a restaurant share its tables. PRO also gets customer
+// QR ordering (v2).
 export const SUBSCRIPTION_LIMITS = {
-  FREE: {
-    restaurants: 1,
-    dishTypes: 20,
-    dishes: 100,
-    waiters: 1,
-    tables: 20
-  },
-  PRO: {
-    restaurants: 1,
-    dishTypes: 20,
-    dishes: 200,
-    waiters: 20,
-    tables: 100
-  }
+  FREE: { tables: 8 },
+  PRO: { tables: 999 } // shown as "unlimited"; the cap only catches typos like 1200
 };
 
-// ====================================================================
-// SUBSCRIPTION PLAN FEATURE FLAGS
-// ====================================================================
-export const SUBSCRIPTION_FEATURES = {
-  FREE: {
-    canPickupOtherWaiterOngoingOrders: false
-  },
-  PRO: {
-    canPickupOtherWaiterOngoingOrders: true
-  }
-};
+export function getTableLimit(subscriptionPlan) {
+  const limits = SUBSCRIPTION_LIMITS[subscriptionPlan];
+  if (!limits) throw new Error(`Unknown subscription plan: ${subscriptionPlan}`);
+  return limits.tables;
+}
 
 // ====================================================================
 // INVITE TOKEN POLICY

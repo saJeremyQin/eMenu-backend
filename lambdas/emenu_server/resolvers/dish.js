@@ -6,7 +6,6 @@ import Dish from '/opt/nodejs/models/dish.js';
 import DishType from '/opt/nodejs/models/dishType.js';
 import mongoose from 'mongoose';
 import { getRestaurantIdFromIdentity, requireBoss } from '../utils/auth.js';
-import { checkDishLimit } from '../utils/subscription-limits.js';
 
 // ====================================================================
 // QUERY RESOLVERS
@@ -73,9 +72,6 @@ export async function createDish(args, identity) {
   
   // 支持两种调用形态：直接传入字段（legacy/tests）或传入 { input: { ... } }（GraphQL pattern）
   const input = args?.input || args;
-
-  // 检查是否超过订阅限制
-  await checkDishLimit(restaurantId);
   
   const { dishTypeId, name, price, description, imageUrl, sortOrder, isActive } = input;
   

@@ -4,7 +4,6 @@
  */
 import DishType from '/opt/nodejs/models/dishType.js';
 import { getRestaurantIdFromIdentity, requireBoss } from '../utils/auth.js';
-import { checkDishTypeLimit } from '../utils/subscription-limits.js';
 
 // ====================================================================
 // QUERY RESOLVERS
@@ -39,9 +38,6 @@ export async function listDishTypes(args, identity) {
 export async function createDishType(args, identity) {
   await requireBoss(identity);
   const restaurantId = await getRestaurantIdFromIdentity(identity);
-  
-  // 检查是否超过订阅限制
-  await checkDishTypeLimit(restaurantId);
   
   const input = args?.input || args;
   const name = (input.name || '').trim();

@@ -1,7 +1,6 @@
 import Restaurant from '/opt/nodejs/models/restaurant.js';
 import User from '/opt/nodejs/models/user.js';
 import { requireRole, getRestaurantIdFromIdentity } from '../utils/auth.js';
-import { checkWaiterLimit } from '../utils/subscription-limits.js';
 import { sendInviteEmail } from '../utils/email.js';
 import { generateInviteToken, isInviteTokenExpired } from '../utils/token.js';
 import { INVITE_TOKEN_TTL_HOURS } from '../config/constants.js';
@@ -51,7 +50,6 @@ export async function inviteWaiter(args, identity) {
   const restaurant = await Restaurant.findById(restaurantId);
   if (!restaurant) throw new Error('Restaurant not found for this boss');
 
-  await checkWaiterLimit(restaurant._id);
   const { email } = args;
   if (!email) throw new Error('Email is required to invite a waiter');
 
@@ -129,15 +127,6 @@ export async function registerWaiter(args, identity) {
   }
   if (isInviteTokenExpired(waiter)) {
     throw new Error(`INVITE_TOKEN_EXPIRED: Invite link expired. Please request a new invitation (valid for ${INVITE_TOKEN_TTL_HOURS} hours).`);
-  }
-
-  if (waiter.restaurantId) {
-    try {
-      await checkWaiterLimit(waiter.restaurantId);
-    } catch (limitErr) {
-      console.error('Waiter limit exceeded during registration:', limitErr);
-      throw new Error('Cannot register: restaurant has reached waiter limit for current subscription plan.');
-    }
   }
 
   const userPoolId = process.env.WAITER_USER_POOL_ID;
